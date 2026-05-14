@@ -223,7 +223,7 @@
             <p>Японские иероглифы: перевод + порядок черт</p>
         </div>
         <div class="badge">
-            <i class="fas fa-globe"></i> Автономное приложение | Jisho.org + Wikimedia
+            <i class="fas fa-globe"></i> GitHub Pages | Jisho.org + Wikimedia
         </div>
     </div>
 
@@ -284,6 +284,33 @@
 </div>
 
 <script>
+// ==================== CORS PROXY (бесплатный) ====================
+// Используем несколько прокси для надежности
+const CORS_PROXIES = [
+    'https://api.allorigins.win/raw?url=',
+    'https://cors-anywhere.herokuapp.com/',
+    'https://corsproxy.io/?'
+];
+
+let currentProxyIndex = 0;
+
+async function fetchWithCors(url) {
+    // Пробуем разные прокси
+    for (let i = currentProxyIndex; i < CORS_PROXIES.length; i++) {
+        try {
+            const proxyUrl = CORS_PROXIES[i] + encodeURIComponent(url);
+            const response = await fetch(proxyUrl);
+            if (response.ok) {
+                currentProxyIndex = i;
+                return await response.json();
+            }
+        } catch (e) {
+            console.log(`Прокси ${i} не работает, пробуем следующий`);
+        }
+    }
+    throw new Error('Все прокси недоступны');
+}
+
 // ==================== ПЕРЕВОД НА РУССКИЙ ====================
 const translations = {
     "Moon": "Луна", "month": "месяц", "moonlight": "лунный свет",
@@ -380,8 +407,15 @@ async function searchKanji() {
     showLoading();
 
     try {
-        const response = await fetch(`https://jisho.org/api/v1/search/words?keyword=${encodeURIComponent(kanji)}`);
-        const data = await response.json();
+        // Пробуем прямой запрос
+        let response = await fetch(`https://jisho.org/api/v1/search/words?keyword=${encodeURIComponent(kanji)}`);
+        let data = await response.json();
+        
+        // Если прямой запрос не сработал из-за CORS, используем прокси
+        if (!data.data || data.data.length === 0) {
+            response = await fetchWithCors(`https://jisho.org/api/v1/search/words?keyword=${encodeURIComponent(kanji)}`);
+            data = response;
+        }
 
         if (data.data && data.data.length > 0) {
             displayKanjiResult(data.data, kanji);
@@ -389,7 +423,8 @@ async function searchKanji() {
             showError(`Иероглиф "${kanji}" не найден`);
         }
     } catch (err) {
-        showError('Ошибка подключения к интернету. Проверьте соединение.');
+        console.error(err);
+        showError('Ошибка подключения. Попробуйте позже или используйте другой иероглиф.');
     }
 }
 
@@ -455,8 +490,15 @@ async function searchWords() {
     showLoading();
 
     try {
-        const response = await fetch(`https://jisho.org/api/v1/search/words?keyword=${encodeURIComponent(query)}`);
-        const data = await response.json();
+        // Пробуем прямой запрос
+        let response = await fetch(`https://jisho.org/api/v1/search/words?keyword=${encodeURIComponent(query)}`);
+        let data = await response.json();
+        
+        // Если прямой запрос не сработал из-за CORS, используем прокси
+        if (!data.data || data.data.length === 0) {
+            response = await fetchWithCors(`https://jisho.org/api/v1/search/words?keyword=${encodeURIComponent(query)}`);
+            data = response;
+        }
 
         if (data.data && data.data.length > 0) {
             displayWordsResult(data.data, query);
@@ -464,7 +506,8 @@ async function searchWords() {
             showError(`Ничего не найдено. Ищите на японском (例: 日本) или английском (love, moon)`);
         }
     } catch (err) {
-        showError('Ошибка подключения к интернету.');
+        console.error(err);
+        showError('Ошибка подключения. Попробуйте позже.');
     }
 }
 
@@ -532,6 +575,13 @@ function showHelp() {
                 <li><a onclick="document.getElementById('kanjiInput').value='森'; searchKanji();" style="cursor:pointer; color:#6D5A16;">森 → лес</a></li>
                 <li><a onclick="searchWordsFromQuery('water')" style="cursor:pointer; color:#6D5A16;">water → вода на японском</a></li>
             </ul>
+            <br>
+            <p><strong>⚠️ Важно:</strong> При первом использовании может потребоваться разрешить CORS-прокси:</p>
+            <ol style="margin-left: 24px;">
+                <li>Откройте <a href="https://cors-anywhere.herokuapp.com/" target="_blank">https://cors-anywhere.herokuapp.com/</a></li>
+                <li>Нажмите "Request temporary access to the demo server"</li>
+                <li>Вернитесь и обновите страницу</li>
+            </ol>
         </div>
     `;
 }
@@ -550,6 +600,7 @@ function showError(msg) {
         <div style="text-align: center; padding: 40px; color: #a0522d;">
             <i class="fas fa-exclamation-triangle" style="font-size: 42px; margin-bottom: 16px;"></i>
             <p>${msg}</p>
+            <p style="font-size: 12px; margin-top: 10px;">Попробуйте обновить страницу или выбрать другой иероглиф</p>
         </div>
     `;
 }
@@ -561,6 +612,7 @@ document.addEventListener('keypress', function(e) {
     }
 });
 
+// Запуск
 showPopularKanji();
 </script>
 

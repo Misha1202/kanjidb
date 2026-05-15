@@ -3,21 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KanjiDB — Рабочая версия для GitHub Pages</title>
+    <title>KanjiDB — Японско-русский словарь</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        /* ... (ваши стили остаются без изменений) ... */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-            background: linear-gradient(135deg, #D8CEA9 0%, #C4B893 100%);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             padding: 20px;
             min-height: 100vh;
         }
         .container { max-width: 1400px; margin: 0 auto; }
         .header {
-            background: linear-gradient(135deg, #EBE6D3 0%, #DDD5B5 100%);
-            border: 1px solid #796C37;
+            background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.9) 100%);
             border-radius: 24px;
             padding: 20px 28px;
             margin-bottom: 24px;
@@ -26,12 +24,14 @@
             align-items: center;
             flex-wrap: wrap;
             gap: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
         }
         .logo h1 { color: #5A4A12; font-size: 28px; }
+        .logo h1 i { color: #764ba2; }
         .logo p { color: #6A5A2A; font-size: 13px; }
         .badge {
-            background: #6D5A16;
-            color: #F5EFDF;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
             padding: 8px 20px;
             border-radius: 40px;
             font-size: 13px;
@@ -45,19 +45,20 @@
             .grid { grid-template-columns: 1fr; }
         }
         .card {
-            background: #EBE6D3;
-            border: 1px solid #796C37;
+            background: rgba(255,255,255,0.95);
             border-radius: 20px;
             overflow: hidden;
             margin-bottom: 24px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
         }
         .card-title {
-            background: #DDD5B5;
+            background: linear-gradient(135deg, #f5f5f5, #e8e8e8);
             padding: 12px 16px;
             font-weight: bold;
             text-align: center;
-            border-bottom: 1px solid #796C37;
+            border-bottom: 2px solid #764ba2;
         }
+        .card-title i { color: #764ba2; margin-right: 8px; }
         .card-content { padding: 16px; }
         .menu-link {
             display: block;
@@ -67,91 +68,100 @@
             cursor: pointer;
             transition: all 0.2s;
         }
-        .menu-link i { width: 24px; }
-        .menu-link:hover { color: #8B731D; padding-left: 8px; }
+        .menu-link i { width: 24px; color: #764ba2; }
+        .menu-link:hover { color: #764ba2; padding-left: 8px; }
         .search-form input {
             width: 100%;
-            padding: 10px 14px;
+            padding: 12px 14px;
             margin: 8px 0 12px;
-            border: 1px solid #9B8E5A;
-            border-radius: 40px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
             background: white;
             font-size: 14px;
+            transition: all 0.3s;
+        }
+        .search-form input:focus {
+            outline: none;
+            border-color: #764ba2;
+            box-shadow: 0 0 5px rgba(118,75,162,0.3);
         }
         .search-form button {
             width: 100%;
-            background: #6D5A16;
+            background: linear-gradient(135deg, #667eea, #764ba2);
             color: white;
             border: none;
-            padding: 10px;
-            border-radius: 40px;
+            padding: 12px;
+            border-radius: 12px;
             font-weight: bold;
             cursor: pointer;
-            transition: 0.2s;
+            transition: 0.3s;
         }
         .search-form button:hover {
-            background: #5A4A12;
-            transform: translateY(-1px);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(118,75,162,0.3);
         }
         .results-area {
-            background: #EBE6D3;
-            border: 1px solid #796C37;
+            background: rgba(255,255,255,0.95);
             border-radius: 20px;
             overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
         }
         .results-header {
-            background: #DDD5B5;
+            background: linear-gradient(135deg, #f5f5f5, #e8e8e8);
             padding: 12px 20px;
-            border-bottom: 1px solid #796C37;
+            border-bottom: 2px solid #764ba2;
             font-weight: bold;
         }
+        .results-header i { color: #764ba2; margin-right: 8px; }
         .results-content {
             padding: 24px;
             min-height: 600px;
             max-height: 75vh;
             overflow-y: auto;
         }
-        .kanji-main { text-align: center; }
-        .kanji-char { font-size: 96px; font-family: "MS Mincho", "Noto Sans CJK JP", serif; margin: 16px 0; }
-        .reading-tag {
-            display: inline-block;
-            background: white;
-            padding: 5px 14px;
-            border-radius: 40px;
-            margin: 4px;
-            font-size: 13px;
-        }
         .word-card {
             background: white;
-            padding: 14px 16px;
+            padding: 16px 20px;
             margin: 12px 0;
             border-radius: 16px;
             cursor: pointer;
-            transition: all 0.2s;
-            border: 1px solid #E0D9C0;
+            transition: all 0.3s;
+            border: 1px solid #e0e0e0;
         }
         .word-card:hover {
-            transform: translateX(5px);
-            background: #F9F7EF;
+            transform: translateX(8px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            border-color: #764ba2;
         }
-        .word-jp { font-size: 18px; font-weight: bold; }
-        .word-reading { color: #8B7A4A; font-size: 12px; margin-top: 6px; }
-        .word-ru { color: #5A4A12; margin-top: 8px; font-size: 13px; }
-        .btn {
-            background: #6D5A16;
-            color: white;
-            border: none;
-            padding: 8px 18px;
-            border-radius: 40px;
-            cursor: pointer;
-            margin: 5px;
+        .word-jp {
+            font-size: 22px;
+            font-weight: bold;
+            color: #333;
+        }
+        .word-reading {
+            color: #764ba2;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+        .word-ru {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #666;
+            line-height: 1.5;
+        }
+        .word-example {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px dashed #e0e0e0;
+            font-size: 13px;
+            color: #999;
         }
         .loading { text-align: center; padding: 50px; }
         .spinner {
-            width: 42px;
-            height: 42px;
-            border: 3px solid #DDD5B5;
-            border-top: 3px solid #6D5A16;
+            width: 50px;
+            height: 50px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #764ba2;
             border-radius: 50%;
             animation: spin 0.8s linear infinite;
             margin: 0 auto 20px;
@@ -161,10 +171,41 @@
             text-align: center;
             margin-top: 30px;
             padding: 16px;
-            color: #5A4A12;
+            color: white;
             font-size: 12px;
         }
-        .error { color: #c0392b; }
+        .error {
+            text-align: center;
+            padding: 40px;
+            color: #e74c3c;
+        }
+        .btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 8px 18px;
+            border-radius: 12px;
+            cursor: pointer;
+            margin: 5px;
+            transition: 0.3s;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(118,75,162,0.3);
+        }
+        .results-stats {
+            margin-bottom: 16px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            font-size: 14px;
+        }
+        .kanji-char {
+            font-size: 80px;
+            text-align: center;
+            font-family: "MS Mincho", "Noto Sans CJK JP", serif;
+            margin: 20px 0;
+        }
     </style>
 </head>
 <body>
@@ -172,11 +213,11 @@
 <div class="container">
     <div class="header">
         <div class="logo">
-            <h1><i class="fas fa-kanji"></i> KanjiDB.Ru</h1>
-            <p>Японские иероглифы: перевод + чтения</p>
+            <h1><i class="fas fa-language"></i> KanjiDB.Ru</h1>
+            <p>Японско-русский словарь | Warodai API</p>
         </div>
         <div class="badge">
-            <i class="fas fa-globe"></i> GitHub Pages | Работает через CORS-прокси
+            <i class="fas fa-globe"></i> Warodai.ru | Бесплатно
         </div>
     </div>
 
@@ -185,8 +226,8 @@
             <div class="card">
                 <div class="card-title"><i class="fas fa-home"></i> Меню</div>
                 <div class="card-content">
-                    <div class="menu-link" onclick="showRandomKanji()"><i class="fas fa-random"></i> Случайный кандзи</div>
-                    <div class="menu-link" onclick="showPopularKanji()"><i class="fas fa-fire"></i> Популярные кандзи</div>
+                    <div class="menu-link" onclick="showRandomWord()"><i class="fas fa-random"></i> Случайное слово</div>
+                    <div class="menu-link" onclick="showPopularWords()"><i class="fas fa-fire"></i> Популярные слова</div>
                     <div class="menu-link" onclick="showHelp()"><i class="fas fa-question-circle"></i> Как пользоваться</div>
                 </div>
             </div>
@@ -198,234 +239,241 @@
             </div>
             <div class="results-content" id="results">
                 <div style="text-align: center; padding: 40px;">
-                    <i class="fas fa-search" style="font-size: 48px; opacity: 0.5;"></i>
-                    <p style="margin-top: 15px;">Введите иероглиф для поиска</p>
-                    <p style="margin-top: 10px;">📌 日, 月, 水, 火, 木, 金, 土, 人, 愛</p>
+                    <i class="fas fa-search" style="font-size: 48px; opacity: 0.5; color: #764ba2;"></i>
+                    <p style="margin-top: 15px; color: #666;">Введите слово на русском или японском</p>
+                    <p style="margin-top: 10px; color: #999;">📌 Примеры: собака, кошка, 愛, 日本</p>
                 </div>
             </div>
         </div>
 
         <div>
             <div class="card">
-                <div class="card-title"><i class="fas fa-kanji"></i> Поиск иероглифа</div>
+                <div class="card-title"><i class="fas fa-search"></i> Поиск</div>
                 <div class="card-content">
-                    <form onsubmit="searchKanji(); return false;" class="search-form">
-                        <input type="text" id="kanjiInput" placeholder="例: 日, 月, 愛" maxlength="1" autofocus>
-                        <button type="submit"><i class="fas fa-search"></i> Найти иероглиф</button>
+                    <form onsubmit="searchWarodai(); return false;" class="search-form">
+                        <input type="text" id="searchInput" placeholder="Собака, кошка, любовь, 日本..." autofocus>
+                        <button type="submit"><i class="fas fa-search"></i> Найти слово</button>
                     </form>
+                    <div style="margin-top: 12px; font-size: 11px; color: #999;">
+                        <i class="fas fa-info-circle"></i> Поиск на русском или японском
+                    </div>
                 </div>
             </div>
 
             <div class="card">
-                <div class="card-title"><i class="fas fa-language"></i> Поиск слов</div>
+                <div class="card-title"><i class="fas fa-star"></i> Примеры</div>
                 <div class="card-content">
-                    <form onsubmit="searchWords(); return false;" class="search-form">
-                        <input type="text" id="wordInput" placeholder="日本語 / love / ありがとう">
-                        <button type="submit"><i class="fas fa-search"></i> Найти слова</button>
-                    </form>
-                    <div style="margin-top: 12px; font-size: 11px; color: #6A5A2A;">
-                        <i class="fas fa-info-circle"></i> Поиск на японском или английском
-                    </div>
+                    <button class="btn" onclick="quickSearch('собака')" style="width: 100%; margin: 5px 0;">🐕 собака</button>
+                    <button class="btn" onclick="quickSearch('кошка')" style="width: 100%; margin: 5px 0;">🐱 кошка</button>
+                    <button class="btn" onclick="quickSearch('愛')" style="width: 100%; margin: 5px 0;">❤️ любовь</button>
+                    <button class="btn" onclick="quickSearch('日本')" style="width: 100%; margin: 5px 0;">🗾 Япония</button>
                 </div>
             </div>
         </div>
     </div>
 
     <div class="footer">
-        <i class="fas fa-code"></i> Данные: Jisho.org API через CORS-прокси
+        <i class="fas fa-code"></i> Данные: Warodai.ru API | Японско-русский словарь
     </div>
 </div>
 
 <script>
-// НАДЕЖНЫЙ CORS-ПРОКСИ ДЛЯ GITHUB PAGES
-// Используем прокси, который точно работает и не требует ручного разрешения
-const PROXY = 'https://api.allorigins.win/raw?url=';
-const API_URL = 'https://jisho.org/api/v1/search/words?keyword=';
-
-// Функция поиска иероглифа
-async function searchKanji() {
-    const kanji = document.getElementById('kanjiInput').value.trim();
-    if (!kanji || kanji.length !== 1) {
-        showError('Введите один иероглиф (пример: 日, 月, 愛)');
-        return;
-    }
-
-    showLoading();
-
-    try {
-        // Запрос через прокси
-        const proxyUrl = PROXY + encodeURIComponent(API_URL + encodeURIComponent(kanji));
-        const response = await fetch(proxyUrl);
-        
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
-        }
-        
-        const data = await response.json();
-
-        if (data.data && data.data.length > 0) {
-            displayKanjiResult(data.data, kanji);
-        } else {
-            showError(`Иероглиф "${kanji}" не найден`);
-        }
-    } catch (err) {
-        console.error('Ошибка:', err);
-        showError(`Ошибка загрузки: ${err.message}. Проверьте интернет-соединение.`);
-    }
-}
-
-// Функция поиска слов
-async function searchWords() {
-    const query = document.getElementById('wordInput').value.trim();
+// Warodai API поиск
+async function searchWarodai() {
+    const query = document.getElementById('searchInput').value.trim();
     if (!query) {
-        showError('Введите слово (японское или английское)');
+        showError('Введите слово для поиска');
         return;
     }
 
     showLoading();
 
     try {
-        const proxyUrl = PROXY + encodeURIComponent(API_URL + encodeURIComponent(query));
-        const response = await fetch(proxyUrl);
+        // Пробуем Warodai API
+        const warodaiUrl = `https://warodai.ru/api/v1/corpus/lookup/?keyword=${encodeURIComponent(query)}&corpus=warodai`;
+        const response = await fetch(warodaiUrl);
         
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}`);
         }
         
         const data = await response.json();
-
-        if (data.data && data.data.length > 0) {
-            displayWordsResult(data.data, query);
+        
+        if (data && data.records && data.records.length > 0) {
+            displayWarodaiResults(data.records, query);
         } else {
-            showError(`Ничего не найдено. Попробуйте: 日本, love, ありがとう`);
+            // Если ничего не найдено, пробуем Yarxi
+            await searchYarxi(query);
         }
     } catch (err) {
-        console.error(err);
-        showError(`Ошибка: ${err.message}`);
+        console.error('Warodai ошибка:', err);
+        // Пробуем резервный поиск
+        await searchYarxi(query);
     }
 }
 
-// Отображение результата для иероглифа
-function displayKanjiResult(data, searchedKanji) {
-    let mainItem = null;
-    for (const d of data) {
-        if (d.japanese[0]?.word === searchedKanji) {
-            mainItem = d;
-            break;
+// Yarxi.ru поиск (резервный)
+async function searchYarxi(query) {
+    try {
+        const formData = new URLSearchParams();
+        formData.append('R', '');
+        formData.append('M', query);
+        formData.append('Src', 'bytext');
+        
+        const response = await fetch('https://www.yarxi.ru/online/tsearch.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: formData
+        });
+        
+        const html = await response.text();
+        const results = parseYarxiResults(html);
+        
+        if (results.length > 0) {
+            displayYarxiResults(results, query);
+        } else {
+            showError(`Ничего не найдено для "${query}"`);
         }
+    } catch (err) {
+        console.error('Yarxi ошибка:', err);
+        showError(`Ошибка загрузки. Попробуйте другой запрос.`);
     }
-    if (!mainItem) mainItem = data[0];
+}
 
-    const jp = mainItem.japanese[0];
-    const readings = [jp.reading].filter(r => r && r !== searchedKanji);
+// Парсинг результатов Warodai
+function displayWarodaiResults(records, query) {
+    let html = `<div class="results-stats">
+        <i class="fas fa-check-circle" style="color: #27ae60;"></i> Найдено: ${records.length} записей для "${escapeHtml(query)}"
+    </div>`;
     
-    const meanings = [];
-    for (const sense of mainItem.senses.slice(0, 4)) {
-        if (sense.english_definitions) {
-            meanings.push(...sense.english_definitions.slice(0, 3));
-        }
-    }
-
-    const container = document.getElementById('results');
-    container.innerHTML = `
-        <div class="kanji-main">
-            <div class="kanji-char">${searchedKanji}</div>
-            <div>
-                ${readings.map(r => `<span class="reading-tag"><i class="fas fa-book"></i> ${r}</span>`).join('')}
-                ${mainItem.jlpt?.length ? `<span class="reading-tag"><i class="fas fa-certificate"></i> ${mainItem.jlpt[0].toUpperCase()}</span>` : ''}
-            </div>
-            <div style="margin: 20px 0;">
-                <strong><i class="fas fa-language"></i> Значения (англ):</strong>
-                <div style="margin-top: 12px;">${meanings.length ? meanings.map(m => `• ${m}`).join('<br>') : '• (нет данных)'}</div>
-            </div>
-            <div>
-                <button class="btn" onclick="searchWordsFromQuery('${searchedKanji}')">
-                    <i class="fas fa-search"></i> Слова с этим кандзи
-                </button>
-                <button class="btn" onclick="showRandomKanji()">
-                    <i class="fas fa-random"></i> Случайный кандзи
-                </button>
-            </div>
-        </div>
-    `;
-}
-
-// Отображение результатов поиска слов
-function displayWordsResult(data, query) {
-    const items = data.slice(0, 20);
-    let html = `<div style="margin-bottom: 16px;"><i class="fas fa-search"></i> Найдено: ${data.length} слов по запросу "${query}"</div><div>`;
-
-    for (const item of items) {
-        const jp = item.japanese[0];
-        const word = jp.word || jp.reading || '?';
-        const reading = jp.reading && jp.reading !== word ? jp.reading : '';
-        const meanings = item.senses[0]?.english_definitions?.slice(0, 3) || [];
-
+    for (const record of records) {
+        const jpWord = record.word || '?';
+        const reading = record.reading || '';
+        const translation = record.translation || '';
+        const partOfSpeech = record.part_of_speech || '';
+        
         html += `
-            <div class="word-card" onclick="searchFromClick('${word.replace(/'/g, "\\'")}')">
-                <div class="word-jp">${word}</div>
-                ${reading ? `<div class="word-reading"><i class="fas fa-microphone-alt"></i> ${reading}</div>` : ''}
-                <div class="word-ru">${meanings.join('; ') || 'Значение не найдено'}</div>
+            <div class="word-card" onclick="searchAgain('${jpWord.replace(/'/g, "\\'")}')">
+                <div class="word-jp">${escapeHtml(jpWord)}</div>
+                ${reading ? `<div class="word-reading"><i class="fas fa-microphone-alt"></i> ${escapeHtml(reading)}</div>` : ''}
+                ${partOfSpeech ? `<div class="word-reading"><i class="fas fa-tag"></i> ${escapeHtml(partOfSpeech)}</div>` : ''}
+                <div class="word-ru">📖 ${escapeHtml(translation)}</div>
             </div>
         `;
     }
-    html += `</div>`;
+    
+    document.getElementById('results').innerHTML = html;
+}
+
+// Парсинг Yarxi результатов
+function parseYarxiResults(html) {
+    const results = [];
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    
+    // Ищем строки с результатами
+    const rows = doc.querySelectorAll('tr');
+    for (const row of rows) {
+        const cells = row.querySelectorAll('td');
+        if (cells.length >= 2) {
+            const jpWord = cells[0]?.textContent?.trim() || '';
+            const translation = cells[1]?.textContent?.trim() || '';
+            
+            if (jpWord && translation && jpWord.length > 0 && translation.length > 0) {
+                results.push({ jpWord, translation });
+            }
+        }
+    }
+    
+    return results;
+}
+
+function displayYarxiResults(results, query) {
+    let html = `<div class="results-stats">
+        <i class="fas fa-check-circle" style="color: #27ae60;"></i> Найдено: ${results.length} результатов для "${escapeHtml(query)}" (Yarxi.ru)
+    </div>`;
+    
+    for (const result of results) {
+        html += `
+            <div class="word-card" onclick="searchAgain('${result.jpWord.replace(/'/g, "\\'")}')">
+                <div class="word-jp">${escapeHtml(result.jpWord)}</div>
+                <div class="word-ru">📖 ${escapeHtml(result.translation)}</div>
+            </div>
+        `;
+    }
+    
     document.getElementById('results').innerHTML = html;
 }
 
 // Вспомогательные функции
-function searchWordsFromQuery(q) { 
-    document.getElementById('wordInput').value = q; 
-    searchWords(); 
+function quickSearch(word) {
+    document.getElementById('searchInput').value = word;
+    searchWarodai();
 }
 
-function searchFromClick(w) { 
-    document.getElementById('wordInput').value = w; 
-    searchWords(); 
+function searchAgain(word) {
+    document.getElementById('searchInput').value = word;
+    searchWarodai();
 }
 
-function showRandomKanji() {
-    const list = ['日','月','水','火','木','金','土','人','愛','学','川','雨','風','森','林','山','田','空','星','花'];
-    const random = list[Math.floor(Math.random() * list.length)];
-    document.getElementById('kanjiInput').value = random;
-    searchKanji();
+function showRandomWord() {
+    const randomWords = ['собака', 'кошка', 'любовь', 'мир', 'солнце', 'луна', 'вода', 'огонь'];
+    const random = randomWords[Math.floor(Math.random() * randomWords.length)];
+    quickSearch(random);
 }
 
-function showPopularKanji() {
-    const popular = ['日','月','水','火','木','金','土','人','愛','学','川','雨','森','林','山'];
+function showPopularWords() {
+    const popular = [
+        { word: 'собака', emoji: '🐕' },
+        { word: 'кошка', emoji: '🐱' },
+        { word: 'любовь', emoji: '❤️' },
+        { word: 'мир', emoji: '🕊️' },
+        { word: 'солнце', emoji: '☀️' },
+        { word: 'луна', emoji: '🌙' }
+    ];
+    
     let html = `
         <div style="text-align: center;">
-            <p style="margin-bottom: 20px;"><strong><i class="fas fa-fire"></i> Популярные иероглифы:</strong></p>
-            <div style="display: flex; flex-wrap: wrap; gap: 16px; justify-content: center; margin-bottom: 24px;">
-                ${popular.map(k => `<div style="cursor: pointer; text-align: center;" onclick="document.getElementById('kanjiInput').value='${k}'; searchKanji();">
-                    <div style="font-size: 52px; background: white; padding: 15px; border-radius: 20px; min-width: 80px; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">${k}</div>
-                </div>`).join('')}
+            <h3><i class="fas fa-fire" style="color: #e74c3c;"></i> Популярные запросы</h3>
+            <div style="display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin: 24px 0;">
+                ${popular.map(p => `
+                    <button class="btn" onclick="quickSearch('${p.word}')">
+                        ${p.emoji} ${p.word}
+                    </button>
+                `).join('')}
             </div>
-            <button class="btn" onclick="showRandomKanji()"><i class="fas fa-random"></i> Случайный кандзи</button>
+            <button class="btn" onclick="showRandomWord()">
+                <i class="fas fa-random"></i> Случайное слово
+            </button>
         </div>
     `;
+    
     document.getElementById('results').innerHTML = html;
 }
 
 function showHelp() {
     document.getElementById('results').innerHTML = `
         <div style="padding: 8px;">
-            <h3><i class="fas fa-question-circle"></i> Как пользоваться</h3>
+            <h3><i class="fas fa-question-circle"></i> Как пользоваться словарём</h3>
             <hr style="margin: 16px 0;">
-            <p><strong>🔍 Поиск иероглифа:</strong> введите один иероглиф → получите чтения и перевод</p>
+            <p><strong>🔍 Поиск:</strong> введите слово на русском или японском языке</p>
             <br>
-            <p><strong>📖 Поиск слов:</strong> ищите на японском (漢字), английском (love) или ромадзи (ai)</p>
-            <br>
-            <p><strong>📚 Примеры для теста:</strong></p>
+            <p><strong>📚 Примеры:</strong></p>
             <ul style="margin-left: 24px;">
-                <li><a onclick="document.getElementById('kanjiInput').value='日'; searchKanji();" style="cursor:pointer; color:#6D5A16; text-decoration:underline;">日 → солнце/день</a></li>
-                <li><a onclick="document.getElementById('kanjiInput').value='林'; searchKanji();" style="cursor:pointer; color:#6D5A16; text-decoration:underline;">林 → лес</a></li>
-                <li><a onclick="searchWordsFromQuery('love')" style="cursor:pointer; color:#6D5A16; text-decoration:underline;">love → поиск слов про любовь</a></li>
-                <li><a onclick="searchWordsFromQuery('日本')" style="cursor:pointer; color:#6D5A16; text-decoration:underline;">日本 → Япония</a></li>
+                <li><a onclick="quickSearch('собака')" style="cursor:pointer; color:#764ba2;">собака → 犬 (いぬ)</a></li>
+                <li><a onclick="quickSearch('кошка')" style="cursor:pointer; color:#764ba2;">кошка → 猫 (ねこ)</a></li>
+                <li><a onclick="quickSearch('愛')" style="cursor:pointer; color:#764ba2;">愛 → любовь</a></li>
+                <li><a onclick="quickSearch('日本')" style="cursor:pointer; color:#764ba2;">日本 → Япония</a></li>
             </ul>
             <br>
-            <p><strong>✅ Эта версия работает на GitHub Pages через CORS-прокси</strong></p>
-            <p><strong>📡 Прокси используется только для обхода CORS, данные берутся из официального API Jisho.org</strong></p>
+            <p><strong>✅ Источники:</strong></p>
+            <ul>
+                <li>Warodai.ru - основной словарь</li>
+                <li>Yarxi.ru - резервный словарь</li>
+            </ul>
         </div>
     `;
 }
@@ -434,35 +482,36 @@ function showLoading() {
     document.getElementById('results').innerHTML = `
         <div class="loading">
             <div class="spinner"></div>
-            <p>Загрузка данных из Jisho.org...</p>
+            <p>Поиск в словаре...</p>
+            <p style="font-size: 12px; margin-top: 10px; color: #999;">Поиск в Warodai и Yarxi</p>
         </div>
     `;
 }
 
 function showError(msg) {
     document.getElementById('results').innerHTML = `
-        <div style="text-align: center; padding: 40px; color: #a0522d;">
-            <i class="fas fa-exclamation-triangle" style="font-size: 42px; margin-bottom: 16px;"></i>
-            <p><strong>${msg}</strong></p>
-            <p style="font-size: 12px; margin-top: 20px;">💡 Попробуйте:</p>
-            <ul style="text-align: left; display: inline-block; margin-top: 10px;">
-                <li>Проверить написание</li>
-                <li>Обновить страницу (F5)</li>
-                <li>Проверить интернет-соединение</li>
-            </ul>
+        <div class="error">
+            <i class="fas fa-exclamation-triangle" style="font-size: 48px; margin-bottom: 16px; display: block; color: #e74c3c;"></i>
+            <p><strong>${escapeHtml(msg)}</strong></p>
+            <p style="margin-top: 20px;">💡 Попробуйте: собака, кошка, 愛, 日本</p>
         </div>
     `;
 }
 
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
 document.addEventListener('keypress', function(e) {
-    if (e.key === 'Enter') {
-        if (document.activeElement?.id === 'kanjiInput') searchKanji();
-        if (document.activeElement?.id === 'wordInput') searchWords();
+    if (e.key === 'Enter' && document.activeElement?.id === 'searchInput') {
+        searchWarodai();
     }
 });
 
-showPopularKanji();
+// Инициализация
+showPopularWords();
 </script>
-
 </body>
 </html>

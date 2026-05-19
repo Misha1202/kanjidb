@@ -3,14 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Система задач - Мезонин</title>
+    <title>Мезонин Задачник - Вход</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             min-height: 100vh;
@@ -20,12 +16,7 @@
             align-items: center;
             padding: 20px;
         }
-
-        .container {
-            max-width: 500px;
-            width: 100%;
-        }
-
+        .container { max-width: 400px; width: 100%; }
         .card {
             background: white;
             border-radius: 20px;
@@ -33,106 +24,64 @@
             overflow: hidden;
             animation: fadeIn 0.3s ease;
         }
-
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
         }
-
         .header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             padding: 30px;
             text-align: center;
         }
-
-        .header h1 {
-            font-size: 28px;
-            margin-bottom: 8px;
-        }
-
-        .header p {
-            opacity: 0.9;
-            font-size: 14px;
-        }
-
-        .content {
-            padding: 30px;
-        }
-
-        .role-btn {
-            width: 100%;
-            padding: 15px;
-            margin-bottom: 15px;
-            border: 2px solid #e0e0e0;
-            background: white;
-            border-radius: 12px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-        }
-
-        .role-btn:hover {
-            border-color: #667eea;
-            transform: translateY(-2px);
-            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.2);
-        }
-
-        .user-btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-        }
-
-        .admin-btn {
-            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-            color: white;
-            border: none;
-        }
-
-        .user-btn:hover, .admin-btn:hover {
-            transform: translateY(-2px);
-            filter: brightness(1.05);
-        }
-
-        .input-group {
-            margin-top: 20px;
-            display: none;
-        }
-
-        .input-group.show {
+        .header h1 { font-size: 28px; margin-bottom: 8px; }
+        .header p { opacity: 0.9; font-size: 14px; }
+        .content { padding: 30px; }
+        .form-group { margin-bottom: 20px; }
+        label {
             display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
         }
-
         input {
             width: 100%;
             padding: 12px;
             border: 2px solid #e0e0e0;
             border-radius: 10px;
             font-size: 14px;
-            margin-bottom: 15px;
+            transition: border-color 0.3s;
         }
-
         input:focus {
             outline: none;
             border-color: #667eea;
         }
-
-        button {
+        .btn {
             width: 100%;
-            padding: 12px;
-            background: #28a745;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border: none;
             border-radius: 10px;
             font-size: 16px;
             font-weight: 600;
             cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .btn:hover { transform: translateY(-2px); }
+        .error-msg {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        .role-badge {
+            text-align: center;
+            margin-top: 15px;
+            font-size: 12px;
+            color: #666;
         }
     </style>
 </head>
@@ -141,69 +90,71 @@
         <div class="card">
             <div class="header">
                 <h1>📋 Мезонин Задачник</h1>
-                <p>Учет задач по полкам, коробкам и беспорядку</p>
+                <p>Вход в систему</p>
             </div>
             <div class="content">
-                <button class="role-btn user-btn" onclick="showUserAuth()">
-                    👤 Я сотрудник
-                </button>
-                <button class="role-btn admin-btn" onclick="showAdminAuth()">
-                    👑 Администратор
-                </button>
-                
-                <div id="userAuth" class="input-group">
-                    <input type="text" id="userName" placeholder="Введите ваше ФИО или ID сотрудника">
-                    <button onclick="loginAsUser()">Войти в систему</button>
-                </div>
-                
-                <div id="adminAuth" class="input-group">
-                    <input type="password" id="adminPassword" placeholder="Введите пароль администратора">
-                    <button onclick="loginAsAdmin()">Войти как администратор</button>
+                <div id="errorMsg" class="error-msg"></div>
+                <form id="loginForm">
+                    <div class="form-group">
+                        <label>👤 Логин</label>
+                        <input type="text" id="username" required placeholder="Введите логин">
+                    </div>
+                    <div class="form-group">
+                        <label>🔒 Пароль</label>
+                        <input type="password" id="password" required placeholder="Введите пароль">
+                    </div>
+                    <button type="submit" class="btn">Войти</button>
+                </form>
+                <div class="role-badge">
+                    <small>Доступ только для авторизованных пользователей</small>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        const ADMIN_PASSWORD = "admin123"; // Смените на свой пароль!
+        const SUPABASE_URL = "https://zukiqrltjqsaeetxmnez.supabase.co";
+        const SUPABASE_ANON_KEY = "sb_publishable_sbsCtuNxNmC2u-nAsNaDmQ_bBXDfr5f";
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        function showUserAuth() {
-            document.getElementById('userAuth').classList.add('show');
-            document.getElementById('adminAuth').classList.remove('show');
-        }
-
-        function showAdminAuth() {
-            document.getElementById('adminAuth').classList.add('show');
-            document.getElementById('userAuth').classList.remove('show');
-        }
-
-        function loginAsUser() {
-            const userName = document.getElementById('userName').value.trim();
-            if (!userName) {
-                alert('Введите ваше ФИО или ID');
-                return;
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+            const errorDiv = document.getElementById('errorMsg');
+            
+            errorDiv.style.display = 'none';
+            
+            try {
+                // Ищем пользователя в таблице users
+                const { data, error } = await supabaseClient
+                    .from('users')
+                    .select('*')
+                    .eq('username', username)
+                    .eq('password', password);
+                
+                if (error) throw error;
+                
+                if (data && data.length > 0) {
+                    const user = data[0];
+                    localStorage.setItem('userId', user.username);
+                    localStorage.setItem('userFullName', user.full_name);
+                    localStorage.setItem('userRole', user.role);
+                    
+                    if (user.role === 'admin') {
+                        window.location.href = 'admin-panel.html';
+                    } else {
+                        window.location.href = 'user-dashboard.html';
+                    }
+                } else {
+                    errorDiv.textContent = '❌ Неверный логин или пароль';
+                    errorDiv.style.display = 'block';
+                }
+            } catch (error) {
+                errorDiv.textContent = '❌ Ошибка подключения: ' + error.message;
+                errorDiv.style.display = 'block';
             }
-            localStorage.setItem('userId', userName);
-            localStorage.setItem('userRole', 'user');
-            window.location.href = 'user-dashboard.html';
-        }
-
-        function loginAsAdmin() {
-            const password = document.getElementById('adminPassword').value;
-            if (password === ADMIN_PASSWORD) {
-                localStorage.setItem('userRole', 'admin');
-                window.location.href = 'admin-panel.html';
-            } else {
-                alert('Неверный пароль!');
-            }
-        }
-
-        // Проверка при загрузке, если уже авторизован
-        if (localStorage.getItem('userRole') === 'user') {
-            window.location.href = 'user-dashboard.html';
-        } else if (localStorage.getItem('userRole') === 'admin') {
-            window.location.href = 'admin-panel.html';
-        }
+        });
     </script>
 </body>
 </html>

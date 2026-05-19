@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Наш Задачник</title>
-    <!-- Подключаем Supabase SDK -->
+    <!-- Подключаем официальный Supabase SDK -->
     <script src="https://jsdelivr.net"></script>
     <style>
         body { font-family: Arial, sans-serif; max-width: 600px; margin: 20px auto; padding: 20px; background-color: #f4f4f9; color: #333; }
@@ -90,14 +90,14 @@
     </div>
 
     <script>
-        // КОНФИГУРАЦИЯ SUPABASE
-        const SUPABASE_URL = "ВАШ_SUPABASE_URL"; 
-        const SUPABASE_ANON_KEY = "ВАШ_SUPABASE_ANON_KEY";
+        // Инициализация Supabase с вашими корректными данными
+        const SUPABASE_URL = "https://zukiqrltjqsaeetxmnez.supabase.co"; 
+        const SUPABASE_ANON_KEY = "sb_publishable_sbsCtuNxNmC2u-nAsNaDmQ_bBXDfr5f";
         const supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         let currentTask = null;
 
-        // Исправленное переключение вкладок без event.target
+        // Переключение вкладок
         function switchTab(screenId) {
             document.getElementById('create-screen').classList.add('hidden');
             document.getElementById('solve-screen').classList.add('hidden');
@@ -109,7 +109,7 @@
             document.getElementById('btn-' + screenId).classList.add('active');
         }
 
-        // Функция загрузки картинок в облако Supabase Storage
+        // Загрузка фото в облачное хранилище бакета task-images
         async function uploadImage(fileInputId) {
             const fileInput = document.getElementById(fileInputId);
             if (!fileInput.files || fileInput.files.length === 0) return null;
@@ -120,13 +120,16 @@
             const filePath = `uploads/${fileName}`;
 
             const { data, error } = await supabase.storage.from('task-images').upload(filePath, file);
-            if (error) { alert('Ошибка загрузки фото: ' + error.message); return null; }
+            if (error) { 
+                alert('Ошибка загрузки фото в Supabase: ' + error.message); 
+                return null; 
+            }
 
             const { data: publicUrlData } = supabase.storage.from('task-images').getPublicUrl(filePath);
             return publicUrlData.publicUrl;
         }
 
-        // СЦЕНАРИЙ 1: Отправка формы (Создание задачи)
+        // Создание задачи
         document.getElementById('task-form').addEventListener('submit', async function(e) {
             e.preventDefault();
             const btn = document.getElementById('submit-btn');
@@ -148,19 +151,19 @@
             btn.disabled = false;
 
             if (error) {
-                alert('Ошибка сохранения: ' + error.message);
+                alert('Ошибка базы данных: ' + error.message);
             } else {
-                alert('Задача успешно улетела в облако!');
+                alert('Задача успешно сохранена в общую базу!');
                 this.reset();
             }
         });
 
-        // СЦЕНАРИЙ 2: Получение случайной задачи
+        // Получение случайной задачи
         async function getRandomTask() {
             const container = document.getElementById('task-container');
             const msg = document.getElementById('screen-msg');
             container.classList.add('hidden');
-            msg.innerText = "Ищу свободную задачу...";
+            msg.innerText = "Подключаюсь к базе данных...";
             msg.classList.remove('hidden');
             
             document.getElementById('task-file-after').value = ""; 
@@ -170,10 +173,10 @@
                 .select('*')
                 .eq('status', 'Доступна');
 
-            if (error) { msg.innerText = "Ошибка: " + error.message; return; }
+            if (error) { msg.innerText = "Ошибка загрузки: " + error.message; return; }
 
             if (!availableTasks || availableTasks.length === 0) {
-                msg.innerText = "🎉 Все задачи выполнены! В пуле ничего нет.";
+                msg.innerText = "🎉 Все задачи выполнены! Свободных задач нет.";
                 return;
             }
 
@@ -191,17 +194,17 @@
             const imgContainer = document.getElementById('view-img-before-container');
             imgContainer.innerHTML = '';
             if (currentTask.photo_before_url) {
-                imgContainer.innerHTML = `<label>Фото ДО:</label><img src="${currentTask.photo_before_url}" class="task-img">`;
+                imgContainer.innerHTML = `<label style="margin-top:10px;">Фото ДО:</label><img src="${currentTask.photo_before_url}" class="task-img">`;
             }
         }
 
-        // СЦЕНАРИЙ 2: Завершение задачи с фотоотчетом
+        // Завершение задачи с обязательным фотоотчетом ПОСЛЕ
         async function completeTask() {
             if (!currentTask) return;
 
             const fileInput = document.getElementById('task-file-after');
             if (!fileInput.files || fileInput.files.length === 0) {
-                alert('Пожалуйста, сделайте или прикрепите фотоотчет «ПОСЛЕ»!');
+                alert('Для завершения необходимо сделать фотоотчет ПОСЛЕ!');
                 return;
             }
 
@@ -211,7 +214,11 @@
 
             const photoAfterUrl = await uploadImage('task-file-after');
 
-            if (!photoAfterUrl) { btn.innerText = "✅ Готово! Отправить отчет"; btn.disabled = false; return; }
+            if (!photoAfterUrl) { 
+                btn.innerText = "✅ Готово! Отправить отчет"; 
+                btn.disabled = false; 
+                return; 
+            }
 
             const { error } = await supabase
                 .from('tasks')
@@ -222,9 +229,9 @@
             btn.disabled = false;
 
             if (error) {
-                alert('Не удалось сохранить отчет: ' + error.message);
+                alert('Не удалось закрыть задачу: ' + error.message);
             } else {
-                alert('Отлично! Фотоотчет сохранен, задача закрыта.');
+                alert('Готово! Задача закрыта и удалена из случайного пула.');
                 currentTask = null;
                 getRandomTask(); 
             }

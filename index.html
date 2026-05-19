@@ -150,6 +150,12 @@
             margin-bottom: 20px;
             display: none;
         }
+        .image-preview {
+            max-width: 100%;
+            max-height: 200px;
+            margin: 10px 0;
+            border-radius: 8px;
+        }
     </style>
 </head>
 <body>
@@ -198,7 +204,8 @@
                     </div>
                     <div class="form-group">
                         <label>📸 Фото «ДО» (необязательно)</label>
-                        <input type="file" id="task-file-before" accept="image/*">
+                        <input type="file" id="task-file-before" accept="image/*" onchange="previewImage(this, 'before-preview')">
+                        <div id="before-preview"></div>
                     </div>
                     <button type="submit" class="main-btn">✨ Сохранить задачу</button>
                 </form>
@@ -224,7 +231,8 @@
                     
                     <div class="form-group">
                         <label style="color: #e74c3c;">📸 Фотоотчет «ПОСЛЕ» *</label>
-                        <input type="file" id="task-file-after" accept="image/*">
+                        <input type="file" id="task-file-after" accept="image/*" onchange="previewImage(this, 'after-preview')">
+                        <div id="after-preview"></div>
                         <small style="color: #666;">Обязательно прикрепите фото выполненной работы</small>
                     </div>
                     
@@ -245,6 +253,19 @@
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         
         let currentTask = null;
+
+        function previewImage(input, previewId) {
+            const preview = document.getElementById(previewId);
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    preview.innerHTML = `<img src="${e.target.result}" class="image-preview" alt="Preview">`;
+                };
+                reader.readAsDataURL(input.files[0]);
+            } else {
+                preview.innerHTML = '';
+            }
+        }
 
         function showMessage(message, isError = false) {
             const msgDiv = isError ? document.getElementById('errorMsg') : document.getElementById('successMsg');
@@ -283,23 +304,27 @@
             
             const fileExt = file.name.split('.').pop();
             const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-            const filePath = `task-photos/${fileName}`;
+            const filePath = `public/${fileName}`;
 
             try {
-                // Пробуем загрузить в bucket 'task-images'
+                console.log('Начинаем загрузку файла:', fileName);
+                
                 const { data, error } = await supabaseClient.storage
                     .from('task-images')
                     .upload(filePath, file, {
                         cacheControl: '3600',
-                        upsert: false
+                        upsert: false,
+                        contentType: file.type
                     });
 
                 if (error) {
-                    console.error('Ошибка загрузки:', error);
-                    showMessage('Ошибка загрузки фото: ' + error.message, true);
+                    console.error('Ошибка Supabase:', error);
+                    showMessage('Ошибка загрузки: ' + error.message, true);
                     return null;
                 }
 
+                console.log('Файл загружен успешно:', data);
+                
                 const { data: publicUrlData } = supabaseClient.storage
                     .from('task-images')
                     .getPublicUrl(filePath);
@@ -307,7 +332,7 @@
                 return publicUrlData.publicUrl;
             } catch (err) {
                 console.error('Исключение при загрузке:', err);
-                showMessage('Ошибка при загрузке файла', true);
+                showMessage('Ошибка при загрузке файла: ' + err.message, true);
                 return null;
             }
         }
@@ -337,6 +362,7 @@
                 
                 showMessage('✅ Задача успешно создана!');
                 this.reset();
+                document.getElementById('before-preview').innerHTML = '';
                 
             } catch (error) {
                 showMessage('❌ Ошибка: ' + error.message, true);
@@ -355,7 +381,8 @@
             msg.classList.remove('hidden');
             msg.textContent = "🔄 Загрузка задач из базы данных...";
             
-            document.getElementById('task-file-after').value = ""; 
+            document.getElementById('task-file-after').value = "";
+            document.getElementById('after-preview').innerHTML = "";
 
             try {
                 const { data: availableTasks, error } = await supabaseClient
@@ -387,7 +414,7 @@
                 if (currentTask.photo_before_url) {
                     imgContainer.innerHTML = `
                         <label style="font-weight: 600; margin-top: 10px; display: block;">📸 Фото ДО:</label>
-                        <img src="${currentTask.photo_before_url}" class="task-img" alt="Фото до выполнения">
+                        <img src="${currentTask.photo_before_url}" class="task-img" alt="Фото до выполнения" onerror="this.src='https://placehold.co/400x300?text=Фото+не+загрузилось'">
                     `;
                 }
             } catch (error) {
@@ -466,7 +493,6 @@
 
         window.addEventListener('load', async () => {
             try {
-                // Проверяем подключение
                 const { error } = await supabaseClient.from('tasks').select('id', { count: 'exact', head: true });
                 if (error) throw error;
                 console.log('✅ Supabase подключен успешно!');

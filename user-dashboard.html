@@ -3,64 +3,100 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Мои задачи - Мезонин</title>
+    <title>Мезонин Задачник - Рабочее место</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/browser-image-compression/2.0.2/browser-image-compression.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #f5f5f5;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
             padding: 20px;
         }
         .container { max-width: 800px; margin: 0 auto; }
         .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            background: white;
+            color: #333;
             padding: 20px;
             border-radius: 15px;
             margin-bottom: 20px;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
         }
         .card {
             background: white;
             border-radius: 15px;
-            padding: 20px;
+            padding: 25px;
             margin-bottom: 20px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
         }
         .task-card {
-            border-left: 4px solid #667eea;
-            transition: transform 0.2s;
+            background: linear-gradient(135deg, #fff 0%, #f8f9fa 100%);
+        }
+        .task-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: #667eea;
             margin-bottom: 15px;
         }
-        .task-card:hover { transform: translateX(5px); }
-        .task-title { font-size: 18px; font-weight: 600; color: #333; margin-bottom: 10px; }
-        .task-info { display: flex; gap: 15px; margin-bottom: 10px; font-size: 14px; flex-wrap: wrap; }
-        .badge { padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+        .task-info {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+            font-size: 16px;
+            flex-wrap: wrap;
+        }
+        .badge {
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+        }
         .badge-high { background: #fee; color: #c00; }
         .badge-medium { background: #ffeaa7; color: #d63031; }
         .badge-low { background: #e8f5e9; color: #27ae60; }
-        .task-desc { color: #666; margin-bottom: 15px; }
-        .task-img { max-width: 100%; max-height: 200px; border-radius: 10px; margin-top: 10px; }
-        .btn {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 600;
+        .task-desc {
+            color: #555;
+            margin-bottom: 20px;
+            line-height: 1.5;
+            font-size: 16px;
         }
-        .btn-primary { background: #667eea; color: white; }
+        .task-img {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 10px;
+            margin: 15px 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
         .btn-success { background: #28a745; color: white; }
         .btn-danger { background: #dc3545; color: white; }
         .btn-secondary { background: #6c757d; color: white; }
-        .logout-btn { background: rgba(255,255,255,0.2); color: white; }
-        .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
-        .tab { flex: 1; padding: 12px; background: white; border: none; border-radius: 10px; cursor: pointer; font-weight: 600; }
-        .tab.active { background: #667eea; color: white; }
+        .logout-btn { background: #dc3545; color: white; }
+        .button-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .button-group .btn {
+            flex: 1;
+        }
         .modal {
             display: none;
             position: fixed;
@@ -75,36 +111,49 @@
         }
         .modal-content {
             background: white;
-            border-radius: 15px;
-            padding: 25px;
+            border-radius: 20px;
+            padding: 30px;
             max-width: 500px;
             width: 90%;
-            max-height: 80vh;
-            overflow-y: auto;
+            text-align: center;
         }
-        .form-group { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 5px; font-weight: 600; }
-        input, select, textarea {
+        .modal-buttons {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+            justify-content: center;
+        }
+        .form-group { margin-bottom: 20px; text-align: left; }
+        label { display: block; margin-bottom: 8px; font-weight: 600; }
+        input, textarea {
             width: 100%;
-            padding: 10px;
+            padding: 12px;
             border: 2px solid #e0e0e0;
-            border-radius: 8px;
+            border-radius: 10px;
+            font-size: 14px;
         }
-        .image-preview { max-width: 100%; margin-top: 10px; border-radius: 8px; }
-        .progress-bar {
-            width: 100%;
-            height: 4px;
-            background: #f0f0f0;
-            border-radius: 2px;
-            overflow: hidden;
-            margin-top: 10px;
-            display: none;
+        .image-preview { 
+            max-width: 100%; 
+            margin-top: 10px; 
+            border-radius: 10px;
+            max-height: 200px;
         }
-        .progress-fill {
-            height: 100%;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            width: 0%;
-            transition: width 0.3s;
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        .user-name {
+            font-weight: 600;
+            color: #667eea;
+        }
+        .task-status {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            background: #e3f2fd;
+            color: #1976d2;
         }
     </style>
 </head>
@@ -113,66 +162,37 @@
         <div class="header">
             <div>
                 <h2>📋 Мезонин Задачник</h2>
-                <p style="font-size: 14px; opacity: 0.9;">Сотрудник: <span id="userNameDisplay"></span></p>
+                <p>Сотрудник: <span class="user-name" id="userNameDisplay"></span></p>
             </div>
             <button class="btn logout-btn" onclick="logout()">🚪 Выйти</button>
         </div>
 
-        <div class="tabs">
-            <button class="tab active" onclick="switchTab('create')">➕ Создать задачу</button>
-            <button class="tab" onclick="switchTab('my')">📋 Мои задачи</button>
-            <button class="tab" onclick="switchTab('available')">🎯 Доступные задачи</button>
+        <!-- Основная карточка с задачей -->
+        <div class="card task-card" id="taskCard">
+            <div id="taskContent">
+                <div class="loading">
+                    🎲 Нажмите кнопку, чтобы получить задачу
+                </div>
+            </div>
+            <div class="button-group" id="actionButtons" style="display: none;">
+                <button class="btn btn-danger" onclick="skipTask()">⏭️ Пропустить</button>
+                <button class="btn btn-success" onclick="openCompleteModal()">✅ Готово</button>
+            </div>
+            <button class="btn btn-primary" id="getTaskBtn" onclick="getRandomTask()" style="width: 100%; margin-top: 20px;">
+                🎲 Получить случайную задачу
+            </button>
         </div>
+    </div>
 
-        <!-- Вкладка создания задачи -->
-        <div id="createTab" class="card">
-            <h3>Новая задача</h3>
-            <form id="taskForm">
-                <div class="form-group">
-                    <label>Тип задачи *</label>
-                    <select id="taskType" required>
-                        <option value="Гнутая полка">🔧 Гнутая полка</option>
-                        <option value="Рваная коробка">📦 Рваная коробка</option>
-                        <option value="Беспорядок">🗑️ Беспорядок</option>
-                        <option value="Другое">✨ Другое</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Местоположение *</label>
-                    <input type="text" id="taskLocation" placeholder="Например: Стеллаж А3, полка 2" required>
-                </div>
-                <div class="form-group">
-                    <label>Приоритет</label>
-                    <select id="taskPriority">
-                        <option value="Низкий">🟢 Низкий</option>
-                        <option value="Средний" selected>🟡 Средний</option>
-                        <option value="Высокий">🔴 Высокий</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Описание / Комментарий</label>
-                    <textarea id="taskDesc" rows="3" placeholder="Подробности задачи..."></textarea>
-                </div>
-                <div class="form-group">
-                    <label>📸 Фото (обязательно)</label>
-                    <input type="file" id="taskPhoto" accept="image/*" onchange="previewPhoto(this, 'createPreview')" required>
-                    <div id="createPreview"></div>
-                </div>
-                <div class="progress-bar" id="progressBar"><div class="progress-fill" id="progressFill"></div></div>
-                <button type="submit" class="btn btn-primary" style="width: 100%;">✅ Создать задачу</button>
-            </form>
-        </div>
-
-        <!-- Вкладка моих задач -->
-        <div id="myTasksTab" class="card" style="display: none;">
-            <h3>📌 Мои задачи</h3>
-            <div id="myTasksList"></div>
-        </div>
-
-        <!-- Вкладка доступных задач -->
-        <div id="availableTasksTab" class="card" style="display: none;">
-            <h3>🎯 Доступные для выполнения</h3>
-            <div id="availableTasksList"></div>
+    <!-- Модальное окно подтверждения пропуска -->
+    <div id="skipModal" class="modal">
+        <div class="modal-content">
+            <h3>⚠️ Подтверждение</h3>
+            <p style="margin-top: 15px;">Вы точно хотите пропустить эту задачу?</p>
+            <div class="modal-buttons">
+                <button class="btn btn-secondary" onclick="closeSkipModal()">Отмена</button>
+                <button class="btn btn-danger" onclick="confirmSkip()">Да, пропустить</button>
+            </div>
         </div>
     </div>
 
@@ -180,18 +200,22 @@
     <div id="completeModal" class="modal">
         <div class="modal-content">
             <h3>✅ Выполнение задачи</h3>
-            <div id="modalTaskInfo"></div>
+            <div style="text-align: left; margin: 20px 0;">
+                <div id="completeTaskInfo"></div>
+            </div>
             <div class="form-group">
                 <label>📸 Фото ПОСЛЕ выполнения *</label>
-                <input type="file" id="completePhoto" accept="image/*" onchange="previewPhoto(this, 'completePreview')" required>
+                <input type="file" id="completePhoto" accept="image/*" onchange="previewCompletePhoto(this)" required>
                 <div id="completePreview"></div>
             </div>
             <div class="form-group">
                 <label>💬 Комментарий (опционально)</label>
                 <textarea id="completeComment" rows="2" placeholder="Что было сделано?"></textarea>
             </div>
-            <button class="btn btn-success" onclick="submitComplete()" style="width: 100%; margin-top: 10px;">✅ Завершить задачу</button>
-            <button class="btn btn-secondary" onclick="closeModal()" style="width: 100%; margin-top: 10px;">❌ Отмена</button>
+            <div class="modal-buttons">
+                <button class="btn btn-secondary" onclick="closeCompleteModal()">Отмена</button>
+                <button class="btn btn-success" onclick="submitComplete()">✅ Завершить</button>
+            </div>
         </div>
     </div>
 
@@ -203,7 +227,8 @@
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         
         let currentUser = localStorage.getItem('userId');
-        let currentTaskToComplete = null;
+        let currentTask = null;
+        let skipTaskId = null;
 
         // Проверка авторизации
         if (!currentUser) {
@@ -231,178 +256,108 @@
             throw new Error('Ошибка загрузки фото');
         }
 
-        async function uploadImage(fileInput) {
-            if (!fileInput.files || !fileInput.files[0]) return null;
-            let file = fileInput.files[0];
-            file = await compressImage(file);
-            return await uploadToImgBB(file);
+        // Получение случайной задачи
+        window.getRandomTask = async function() {
+            const taskContent = document.getElementById('taskContent');
+            const actionButtons = document.getElementById('actionButtons');
+            const getTaskBtn = document.getElementById('getTaskBtn');
+            
+            taskContent.innerHTML = '<div class="loading">🔄 Загрузка задачи...</div>';
+            actionButtons.style.display = 'none';
+            getTaskBtn.disabled = true;
+            
+            try {
+                // Получаем все доступные задачи (не созданные текущим пользователем)
+                const { data: availableTasks, error } = await supabaseClient
+                    .from('tasks')
+                    .select('*')
+                    .eq('status', 'Доступна')
+                    .neq('created_by', currentUser)
+                    .order('created_at', { ascending: false });
+                
+                if (error) throw error;
+                
+                if (!availableTasks || availableTasks.length === 0) {
+                    taskContent.innerHTML = `
+                        <div class="loading">
+                            🎉 Поздравляем! Все задачи выполнены! 🎉<br>
+                            <small style="font-size: 12px;">Нет доступных задач</small>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                // Выбираем случайную задачу
+                const randomIndex = Math.floor(Math.random() * availableTasks.length);
+                currentTask = availableTasks[randomIndex];
+                
+                // Отображаем задачу
+                taskContent.innerHTML = `
+                    <div class="task-title">${escapeHtml(currentTask.title)}</div>
+                    <div class="task-info">
+                        <span>📍 ${escapeHtml(currentTask.location || 'Не указано')}</span>
+                        <span class="badge ${getPriorityClass(currentTask.priority)}">${currentTask.priority}</span>
+                    </div>
+                    <div class="task-desc">${escapeHtml(currentTask.description)}</div>
+                    ${currentTask.photo_before_url ? `<img src="${currentTask.photo_before_url}" class="task-img" onerror="this.style.display='none'">` : ''}
+                `;
+                actionButtons.style.display = 'flex';
+                
+            } catch (error) {
+                taskContent.innerHTML = `<div class="loading">❌ Ошибка: ${error.message}</div>`;
+            } finally {
+                getTaskBtn.disabled = false;
+            }
         }
-
-        function previewPhoto(input, previewId) {
-            const preview = document.getElementById(previewId);
+        
+        // Пропуск задачи
+        window.skipTask = function() {
+            if (!currentTask) return;
+            skipTaskId = currentTask.id;
+            document.getElementById('skipModal').style.display = 'flex';
+        }
+        
+        function closeSkipModal() {
+            document.getElementById('skipModal').style.display = 'none';
+            skipTaskId = null;
+        }
+        
+        async function confirmSkip() {
+            closeSkipModal();
+            // Просто пропускаем задачу и загружаем новую
+            await getRandomTask();
+        }
+        
+        // Открытие модалки выполнения
+        window.openCompleteModal = function() {
+            if (!currentTask) return;
+            
+            document.getElementById('completeTaskInfo').innerHTML = `
+                <div class="task-title" style="font-size: 18px;">${escapeHtml(currentTask.title)}</div>
+                <div class="task-info">📍 ${escapeHtml(currentTask.location || 'Не указано')} | Приоритет: ${currentTask.priority}</div>
+                <div class="task-desc">${escapeHtml(currentTask.description)}</div>
+                ${currentTask.photo_before_url ? `<img src="${currentTask.photo_before_url}" class="task-img" style="max-height: 150px;">` : ''}
+            `;
+            document.getElementById('completeModal').style.display = 'flex';
+        }
+        
+        function closeCompleteModal() {
+            document.getElementById('completeModal').style.display = 'none';
+            document.getElementById('completePhoto').value = '';
+            document.getElementById('completePreview').innerHTML = '';
+            document.getElementById('completeComment').value = '';
+        }
+        
+        function previewCompletePhoto(input) {
+            const preview = document.getElementById('completePreview');
             if (input.files && input.files[0]) {
                 const reader = new FileReader();
                 reader.onload = e => preview.innerHTML = `<img src="${e.target.result}" class="image-preview">`;
                 reader.readAsDataURL(input.files[0]);
             } else preview.innerHTML = '';
         }
-
-        function showProgress(show, percent = 0) {
-            const bar = document.getElementById('progressBar');
-            const fill = document.getElementById('progressFill');
-            if (show) {
-                bar.style.display = 'block';
-                fill.style.width = percent + '%';
-            } else bar.style.display = 'none';
-        }
-
-        function switchTab(tab) {
-            document.getElementById('createTab').style.display = 'none';
-            document.getElementById('myTasksTab').style.display = 'none';
-            document.getElementById('availableTasksTab').style.display = 'none';
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            
-            if (tab === 'create') {
-                document.getElementById('createTab').style.display = 'block';
-                document.querySelector('.tab:first-child').classList.add('active');
-            } else if (tab === 'my') {
-                document.getElementById('myTasksTab').style.display = 'block';
-                document.querySelector('.tab:nth-child(2)').classList.add('active');
-                loadMyTasks();
-            } else {
-                document.getElementById('availableTasksTab').style.display = 'block';
-                document.querySelector('.tab:nth-child(3)').classList.add('active');
-                loadAvailableTasks();
-            }
-        }
-
-        // Создание задачи
-        document.getElementById('taskForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const btn = e.target.querySelector('button[type="submit"]');
-            btn.disabled = true;
-            btn.textContent = "⏳ Загрузка...";
-            
-            try {
-                showProgress(true, 30);
-                const photoUrl = await uploadImage(document.getElementById('taskPhoto'));
-                showProgress(true, 70);
-                
-                const { error } = await supabaseClient.from('tasks').insert([{
-                    title: document.getElementById('taskType').value,
-                    location: document.getElementById('taskLocation').value,
-                    priority: document.getElementById('taskPriority').value,
-                    description: document.getElementById('taskDesc').value || 'Нет описания',
-                    photo_before_url: photoUrl,
-                    status: 'Доступна',
-                    created_by: currentUser,
-                    created_at: new Date().toISOString()
-                }]);
-                
-                if (error) throw error;
-                alert('✅ Задача создана!');
-                document.getElementById('taskForm').reset();
-                document.getElementById('createPreview').innerHTML = '';
-            } catch (error) {
-                alert('❌ Ошибка: ' + error.message);
-            } finally {
-                btn.disabled = false;
-                btn.textContent = "✅ Создать задачу";
-                showProgress(false);
-            }
-        });
-
-        // Загрузка моих задач
-        async function loadMyTasks() {
-            const { data, error } = await supabaseClient
-                .from('tasks')
-                .select('*')
-                .eq('created_by', currentUser)
-                .order('created_at', { ascending: false });
-            
-            if (error) {
-                console.error(error);
-                return;
-            }
-            renderTasks(data, 'myTasksList', true);
-        }
-
-        // Загрузка доступных задач
-        async function loadAvailableTasks() {
-            const { data, error } = await supabaseClient
-                .from('tasks')
-                .select('*')
-                .eq('status', 'Доступна')
-                .neq('created_by', currentUser)
-                .order('created_at', { ascending: false });
-            
-            if (error) {
-                console.error(error);
-                return;
-            }
-            renderTasks(data, 'availableTasksList', false);
-        }
-
-        function renderTasks(tasks, containerId, showCreator) {
-            const container = document.getElementById(containerId);
-            if (!tasks || tasks.length === 0) {
-                container.innerHTML = '<p style="text-align: center; color: #666;">📭 Нет задач</p>';
-                return;
-            }
-            
-            container.innerHTML = tasks.map(task => `
-                <div class="card task-card" style="margin-bottom: 15px;">
-                    <div class="task-title">${escapeHtml(task.title)}</div>
-                    <div class="task-info">
-                        <span>📍 ${escapeHtml(task.location || 'Не указано')}</span>
-                        <span class="badge ${getPriorityClass(task.priority)}">${task.priority}</span>
-                        ${showCreator ? `<span>👤 Создал: ${escapeHtml(task.created_by)}</span>` : ''}
-                    </div>
-                    <div class="task-desc">${escapeHtml(task.description)}</div>
-                    ${task.photo_before_url ? `<img src="${task.photo_before_url}" class="task-img" onerror="this.style.display='none'">` : ''}
-                    ${!showCreator && task.status === 'Доступна' ? 
-                        `<button class="btn btn-success" style="margin-top: 10px;" onclick='openCompleteModal(${JSON.stringify(task)})'>✅ Выполнить</button>` : 
-                        task.status === 'Выполнена' ? '<span style="color: green;">✅ Выполнена</span>' : ''
-                    }
-                    ${task.completed_by ? `<div style="margin-top: 10px; font-size: 12px; color: #666;">✅ Выполнил: ${escapeHtml(task.completed_by)}</div>` : ''}
-                    ${task.completed_comment ? `<div style="margin-top: 10px; font-size: 12px; color: #666;">💬 ${escapeHtml(task.completed_comment)}</div>` : ''}
-                </div>
-            `).join('');
-        }
-
-        function escapeHtml(str) {
-            if (!str) return '';
-            return str.replace(/[&<>]/g, function(m) {
-                if (m === '&') return '&amp;';
-                if (m === '<') return '&lt;';
-                if (m === '>') return '&gt;';
-                return m;
-            });
-        }
-
-        function getPriorityClass(priority) {
-            const map = { 'Высокий': 'badge-high', 'Средний': 'badge-medium', 'Низкий': 'badge-low' };
-            return map[priority] || 'badge-medium';
-        }
-
-        function openCompleteModal(task) {
-            currentTaskToComplete = task;
-            document.getElementById('modalTaskInfo').innerHTML = `
-                <div class="task-title">${escapeHtml(task.title)}</div>
-                <div class="task-info">📍 ${escapeHtml(task.location || 'Не указано')} | Приоритет: ${task.priority}</div>
-                <div class="task-desc">${escapeHtml(task.description)}</div>
-                ${task.photo_before_url ? `<img src="${task.photo_before_url}" class="task-img" onerror="this.style.display='none'">` : ''}
-            `;
-            document.getElementById('completeModal').style.display = 'flex';
-        }
-
-        function closeModal() {
-            document.getElementById('completeModal').style.display = 'none';
-            document.getElementById('completePhoto').value = '';
-            document.getElementById('completePreview').innerHTML = '';
-            document.getElementById('completeComment').value = '';
-        }
-
+        
+        // Отправка выполнения
         async function submitComplete() {
             const photoInput = document.getElementById('completePhoto');
             if (!photoInput.files || !photoInput.files[0]) {
@@ -415,9 +370,14 @@
             btn.textContent = "⏳ Загрузка...";
             
             try {
-                const photoUrl = await uploadImage(photoInput);
+                // Сжимаем и загружаем фото
+                let file = photoInput.files[0];
+                file = await compressImage(file);
+                const photoUrl = await uploadToImgBB(file);
+                
                 const comment = document.getElementById('completeComment').value;
                 
+                // Обновляем задачу
                 const { error } = await supabaseClient
                     .from('tasks')
                     .update({
@@ -427,35 +387,54 @@
                         completed_comment: comment,
                         completed_at: new Date().toISOString()
                     })
-                    .eq('id', currentTaskToComplete.id);
+                    .eq('id', currentTask.id);
                 
                 if (error) throw error;
-                alert('🎉 Задача выполнена!');
-                closeModal();
-                loadAvailableTasks();
-                loadMyTasks();
+                
+                alert('🎉 Отлично! Задача выполнена!');
+                closeCompleteModal();
+                
+                // Загружаем новую задачу
+                await getRandomTask();
+                
             } catch (error) {
                 alert('❌ Ошибка: ' + error.message);
             } finally {
                 btn.disabled = false;
-                btn.textContent = "✅ Завершить задачу";
+                btn.textContent = "✅ Завершить";
             }
         }
-
+        
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/[&<>]/g, function(m) {
+                if (m === '&') return '&amp;';
+                if (m === '<') return '&lt;';
+                if (m === '>') return '&gt;';
+                return m;
+            });
+        }
+        
+        function getPriorityClass(priority) {
+            const map = { 'Высокий': 'badge-high', 'Средний': 'badge-medium', 'Низкий': 'badge-low' };
+            return map[priority] || 'badge-medium';
+        }
+        
         function logout() {
             localStorage.clear();
             window.location.href = 'index.html';
         }
-
-        window.switchTab = switchTab;
-        window.openCompleteModal = openCompleteModal;
-        window.closeModal = closeModal;
+        
+        // Открываем функции глобально
+        window.closeSkipModal = closeSkipModal;
+        window.confirmSkip = confirmSkip;
+        window.closeCompleteModal = closeCompleteModal;
         window.submitComplete = submitComplete;
-        window.previewPhoto = previewPhoto;
+        window.previewCompletePhoto = previewCompletePhoto;
         window.logout = logout;
         
-        // Загрузка начальных данных
-        loadMyTasks();
+        // При загрузке автоматически показываем задачу
+        getRandomTask();
     </script>
 </body>
 </html>

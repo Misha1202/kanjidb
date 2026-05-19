@@ -4,54 +4,36 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Задачник - Совместное выполнение задач</title>
-    <!-- Правильное подключение Supabase SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             max-width: 650px;
             margin: 0 auto;
             padding: 20px;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
         }
-
         .app-container {
             background: white;
             border-radius: 20px;
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
             overflow: hidden;
         }
-
         .header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             padding: 30px;
             text-align: center;
         }
-
-        .header h1 {
-            font-size: 28px;
-            margin-bottom: 8px;
-        }
-
-        .header p {
-            opacity: 0.9;
-            font-size: 14px;
-        }
-
+        .header h1 { font-size: 28px; margin-bottom: 8px; }
+        .header p { opacity: 0.9; font-size: 14px; }
         .tabs {
             display: flex;
             background: #f5f5f5;
             border-bottom: 1px solid #e0e0e0;
         }
-
         .tab-btn {
             flex: 1;
             padding: 15px;
@@ -63,34 +45,19 @@
             transition: all 0.3s;
             color: #666;
         }
-
         .tab-btn.active {
             background: white;
             color: #667eea;
             border-bottom: 3px solid #667eea;
         }
-
-        .content {
-            padding: 30px;
-        }
-
-        .card {
-            animation: fadeIn 0.3s ease;
-        }
-
+        .content { padding: 30px; }
+        .card { animation: fadeIn 0.3s ease; }
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
-
-        .hidden {
-            display: none;
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
+        .hidden { display: none; }
+        .form-group { margin-bottom: 20px; }
         label {
             display: block;
             margin-bottom: 8px;
@@ -98,7 +65,6 @@
             color: #333;
             font-size: 14px;
         }
-
         input, select, textarea {
             width: 100%;
             padding: 12px;
@@ -108,17 +74,11 @@
             transition: border-color 0.3s;
             font-family: inherit;
         }
-
         input:focus, select:focus, textarea:focus {
             outline: none;
             border-color: #667eea;
         }
-
-        textarea {
-            resize: vertical;
-            min-height: 80px;
-        }
-
+        textarea { resize: vertical; min-height: 80px; }
         .main-btn {
             width: 100%;
             padding: 14px;
@@ -131,41 +91,31 @@
             cursor: pointer;
             transition: transform 0.2s, box-shadow 0.2s;
         }
-
         .main-btn:hover {
             transform: translateY(-2px);
             box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
         }
-
-        .main-btn:active {
-            transform: translateY(0);
-        }
-
         .main-btn:disabled {
             opacity: 0.6;
             cursor: not-allowed;
             transform: none;
         }
-
         .secondary-btn {
             background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
             margin-top: 10px;
         }
-
         .task-img {
             max-width: 100%;
             margin: 15px 0;
             border-radius: 10px;
             box-shadow: 0 4px 10px rgba(0,0,0,0.1);
         }
-
         .loading {
             text-align: center;
             padding: 40px;
             color: #666;
             font-style: italic;
         }
-
         .badge {
             display: inline-block;
             padding: 4px 12px;
@@ -174,35 +124,16 @@
             font-weight: 600;
             margin-right: 8px;
         }
-
-        .badge-high {
-            background: #fee;
-            color: #c00;
-        }
-
-        .badge-medium {
-            background: #ffeaa7;
-            color: #d63031;
-        }
-
-        .badge-low {
-            background: #e8f5e9;
-            color: #27ae60;
-        }
-
+        .badge-high { background: #fee; color: #c00; }
+        .badge-medium { background: #ffeaa7; color: #d63031; }
+        .badge-low { background: #e8f5e9; color: #27ae60; }
         .info-box {
             background: #f8f9fa;
             padding: 15px;
             border-radius: 10px;
             margin: 15px 0;
         }
-
-        hr {
-            margin: 20px 0;
-            border: none;
-            border-top: 2px solid #f0f0f0;
-        }
-
+        hr { margin: 20px 0; border: none; border-top: 2px solid #f0f0f0; }
         .success-msg {
             background: #d4edda;
             color: #155724;
@@ -211,7 +142,6 @@
             margin-bottom: 20px;
             display: none;
         }
-
         .error-msg {
             background: #f8d7da;
             color: #721c24;
@@ -238,7 +168,6 @@
             <div id="successMsg" class="success-msg"></div>
             <div id="errorMsg" class="error-msg"></div>
 
-            <!-- Создание задачи -->
             <div id="create-screen" class="card">
                 <form id="task-form">
                     <div class="form-group">
@@ -275,7 +204,6 @@
                 </form>
             </div>
 
-            <!-- Выполнение задачи -->
             <div id="solve-screen" class="card hidden">
                 <div id="screen-msg" class="loading">
                     🎲 Нажмите кнопку, чтобы получить случайную задачу
@@ -311,16 +239,13 @@
     </div>
 
     <script>
-        // ==================== НАСТРОЙКИ SUPABASE ====================
         const SUPABASE_URL = "https://zukiqrltjqsaeetxmnez.supabase.co";
         const SUPABASE_ANON_KEY = "sb_publishable_sbsCtuNxNmC2u-nAsNaDmQ_bBXDfr5f";
         
-        // Инициализация Supabase
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         
         let currentTask = null;
 
-        // Функция для показа сообщений
         function showMessage(message, isError = false) {
             const msgDiv = isError ? document.getElementById('errorMsg') : document.getElementById('successMsg');
             msgDiv.textContent = message;
@@ -330,7 +255,6 @@
             }, 3000);
         }
 
-        // Переключение вкладок
         window.switchTab = function(screenId) {
             document.getElementById('create-screen').classList.add('hidden');
             document.getElementById('solve-screen').classList.add('hidden');
@@ -346,14 +270,12 @@
             }
         }
 
-        // Загрузка фото в Supabase Storage
         async function uploadImage(fileInputId) {
             const fileInput = document.getElementById(fileInputId);
             if (!fileInput.files || fileInput.files.length === 0) return null;
             
             const file = fileInput.files[0];
             
-            // Проверка размера файла (макс 5MB)
             if (file.size > 5 * 1024 * 1024) {
                 showMessage('Файл слишком большой! Максимум 5MB', true);
                 return null;
@@ -363,31 +285,33 @@
             const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
             const filePath = `task-photos/${fileName}`;
 
-            // Проверяем существует ли bucket, если нет - создаем
-            const { data: buckets } = await supabaseClient.storage.listBuckets();
-            const bucketExists = buckets?.some(b => b.name === 'task-images');
-            
-            if (!bucketExists) {
-                await supabaseClient.storage.createBucket('task-images', { public: true });
+            try {
+                // Пробуем загрузить в bucket 'task-images'
+                const { data, error } = await supabaseClient.storage
+                    .from('task-images')
+                    .upload(filePath, file, {
+                        cacheControl: '3600',
+                        upsert: false
+                    });
+
+                if (error) {
+                    console.error('Ошибка загрузки:', error);
+                    showMessage('Ошибка загрузки фото: ' + error.message, true);
+                    return null;
+                }
+
+                const { data: publicUrlData } = supabaseClient.storage
+                    .from('task-images')
+                    .getPublicUrl(filePath);
+                    
+                return publicUrlData.publicUrl;
+            } catch (err) {
+                console.error('Исключение при загрузке:', err);
+                showMessage('Ошибка при загрузке файла', true);
+                return null;
             }
-
-            const { data, error } = await supabaseClient.storage
-                .from('task-images')
-                .upload(filePath, file);
-
-            if (error) { 
-                showMessage('Ошибка загрузки фото: ' + error.message, true);
-                return null; 
-            }
-
-            const { data: publicUrlData } = supabaseClient.storage
-                .from('task-images')
-                .getPublicUrl(filePath);
-                
-            return publicUrlData.publicUrl;
         }
 
-        // Создание задачи
         document.getElementById('task-form').addEventListener('submit', async function(e) {
             e.preventDefault();
             const btn = this.querySelector('button[type="submit"]');
@@ -398,7 +322,7 @@
             try {
                 const photoBeforeUrl = await uploadImage('task-file-before');
 
-                const { data, error } = await supabaseClient
+                const { error } = await supabaseClient
                     .from('tasks')
                     .insert([{
                         title: document.getElementById('task-title').value,
@@ -423,7 +347,6 @@
             }
         });
 
-        // Получение случайной задачи
         window.getRandomTask = async function() {
             const container = document.getElementById('task-container');
             const msg = document.getElementById('screen-msg');
@@ -473,7 +396,6 @@
             }
         }
 
-        // Вспомогательные функции для отображения
         function getCategoryIcon(category) {
             const icons = {
                 'Дом': '🏠 Дом',
@@ -494,7 +416,6 @@
             return badges[priority] || priority;
         }
 
-        // Завершение задачи
         window.completeTask = async function() {
             if (!currentTask) {
                 showMessage('Сначала выберите задачу!', true);
@@ -532,7 +453,6 @@
                 showMessage('🎉 Отлично! Задача выполнена! Спасибо за помощь!');
                 currentTask = null;
                 
-                // Автоматически загружаем следующую задачу
                 setTimeout(() => {
                     getRandomTask();
                 }, 1500);
@@ -544,11 +464,10 @@
             }
         }
 
-        // Проверка подключения при загрузке страницы
         window.addEventListener('load', async () => {
             try {
-                // Проверяем подключение к Supabase
-                const { data, error } = await supabaseClient.from('tasks').select('count', { count: 'exact', head: true });
+                // Проверяем подключение
+                const { error } = await supabaseClient.from('tasks').select('id', { count: 'exact', head: true });
                 if (error) throw error;
                 console.log('✅ Supabase подключен успешно!');
                 showMessage('✅ Подключение к базе данных установлено!');

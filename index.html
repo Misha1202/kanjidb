@@ -25,8 +25,8 @@
 <body>
 
     <div class="tabs">
-        <button class="tab-btn active" onclick="switchTab('create-screen')">Создать задачу</button>
-        <button class="tab-btn" onclick="switchTab('solve-screen')">Выполнить задачу</button>
+        <button class="tab-btn active" id="btn-create-screen" onclick="switchTab('create-screen')">Создать задачу</button>
+        <button class="tab-btn" id="btn-solve-screen" onclick="switchTab('solve-screen')">Выполнить задачу</button>
     </div>
 
     <!-- СЦЕНАРИЙ 1: СОЗДАНИЕ ЗАДАЧИ -->
@@ -86,24 +86,27 @@
             <button class="main-btn" onclick="completeTask()" style="background-color: #007bff; margin-bottom: 12px;">✅ Готово! Отправить отчет</button>
         </div>
         
-        <button class="main-btn" id="next-btn" onclick="getRandomTask()" style="background-color: #6c757d;">🎲 Давай случайную задачу</button>
+        <button class="main-btn" id="next-btn" onclick="getRandomTask()" style="background-color: #6c757d; margin-top: 15px;">🎲 Давай случайную задачу</button>
     </div>
 
     <script>
         // КОНФИГУРАЦИЯ SUPABASE
-        const SUPABASE_URL = "https://zukiqrltjqsaeetxmnez.supabase.co/rest/v1/"; 
-        const SUPABASE_ANON_KEY = "sb_secret_hA8ZgtO4kE27y_W18GO1FA_GHauduuH";
+        const SUPABASE_URL = "ВАШ_SUPABASE_URL"; 
+        const SUPABASE_ANON_KEY = "ВАШ_SUPABASE_ANON_KEY";
         const supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         let currentTask = null;
 
-        // Переключение вкладок
+        // Исправленное переключение вкладок без event.target
         function switchTab(screenId) {
             document.getElementById('create-screen').classList.add('hidden');
             document.getElementById('solve-screen').classList.add('hidden');
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            
+            document.getElementById('btn-create-screen').classList.remove('active');
+            document.getElementById('btn-solve-screen').classList.remove('active');
+
             document.getElementById(screenId).classList.remove('hidden');
-            event.target.classList.add('active');
+            document.getElementById('btn-' + screenId).classList.add('active');
         }
 
         // Функция загрузки картинок в облако Supabase Storage
@@ -160,9 +163,8 @@
             msg.innerText = "Ищу свободную задачу...";
             msg.classList.remove('hidden');
             
-            document.getElementById('task-file-after').value = ""; // Сброс инпута фото
+            document.getElementById('task-file-after').value = ""; 
 
-            // Запрашиваем все доступные задачи
             const { data: availableTasks, error } = await supabase
                 .from('tasks')
                 .select('*')
@@ -175,11 +177,9 @@
                 return;
             }
 
-            // Нативный фронтенд-рандом среди строк из бд
             const randomIndex = Math.floor(Math.random() * availableTasks.length);
             currentTask = availableTasks[randomIndex];
 
-            // Заполняем интерфейс данными
             msg.classList.add('hidden');
             container.classList.remove('hidden');
 
@@ -205,7 +205,7 @@
                 return;
             }
 
-            const btn = event.target;
+            const btn = document.querySelector('button[onclick="completeTask()"]');
             btn.innerText = "Отправка отчета...";
             btn.disabled = true;
 
@@ -213,7 +213,6 @@
 
             if (!photoAfterUrl) { btn.innerText = "✅ Готово! Отправить отчет"; btn.disabled = false; return; }
 
-            // Обновляем статус в базе данных
             const { error } = await supabase
                 .from('tasks')
                 .update({ status: 'Выполнена', photo_after_url: photoAfterUrl })
@@ -227,7 +226,7 @@
             } else {
                 alert('Отлично! Фотоотчет сохранен, задача закрыта.');
                 currentTask = null;
-                getRandomTask(); // Автоматически загружаем следующую рандомную задачу
+                getRandomTask(); 
             }
         }
     </script>

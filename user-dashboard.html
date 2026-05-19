@@ -343,7 +343,7 @@
 
         // ========== ВЫПОЛНЕНИЕ ЗАДАЧ ==========
         
-        // Получение случайной задачи
+        // Получение случайной задачи (ПОЛНЫЙ РАНДОМ из доступных)
         window.getRandomTask = async function() {
             const taskContent = document.getElementById('taskContent');
             const actionButtons = document.getElementById('actionButtons');
@@ -354,11 +354,11 @@
             getTaskBtn.disabled = true;
             
             try {
+                // Получаем ВСЕ доступные задачи (без фильтра по создателю)
                 const { data: availableTasks, error } = await supabaseClient
                     .from('tasks')
                     .select('*')
                     .eq('status', 'Доступна')
-                    .neq('created_by', currentUser)
                     .order('created_at', { ascending: false });
                 
                 if (error) throw error;
@@ -373,6 +373,7 @@
                     return;
                 }
                 
+                // Выбираем случайную задачу из ВСЕХ доступных
                 const randomIndex = Math.floor(Math.random() * availableTasks.length);
                 currentTask = availableTasks[randomIndex];
                 
@@ -381,6 +382,7 @@
                     <div class="task-info">
                         <span>📍 ${escapeHtml(currentTask.location || 'Не указано')}</span>
                         <span class="badge ${getPriorityClass(currentTask.priority)}">${currentTask.priority}</span>
+                        <span>👤 Создал: ${escapeHtml(currentTask.created_by || 'Неизвестно')}</span>
                     </div>
                     <div class="task-desc">${escapeHtml(currentTask.description)}</div>
                     ${currentTask.photo_before_url ? `<img src="${currentTask.photo_before_url}" class="task-img" onerror="this.style.display='none'">` : ''}

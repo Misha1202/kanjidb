@@ -3,515 +3,233 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KanjiDB — Японско-русский словарь</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <title>Наш Задачник</title>
+    <!-- Подключаем Supabase SDK -->
+    <script src="https://jsdelivr.net"></script>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            padding: 20px;
-            min-height: 100vh;
-        }
-        .container { max-width: 1400px; margin: 0 auto; }
-        .header {
-            background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.9) 100%);
-            border-radius: 24px;
-            padding: 20px 28px;
-            margin-bottom: 24px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 16px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-        }
-        .logo h1 { color: #5A4A12; font-size: 28px; }
-        .logo h1 i { color: #764ba2; }
-        .logo p { color: #6A5A2A; font-size: 13px; }
-        .badge {
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-            padding: 8px 20px;
-            border-radius: 40px;
-            font-size: 13px;
-        }
-        .grid {
-            display: grid;
-            grid-template-columns: 260px 1fr 300px;
-            gap: 24px;
-        }
-        @media (max-width: 1000px) {
-            .grid { grid-template-columns: 1fr; }
-        }
-        .card {
-            background: rgba(255,255,255,0.95);
-            border-radius: 20px;
-            overflow: hidden;
-            margin-bottom: 24px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-        }
-        .card-title {
-            background: linear-gradient(135deg, #f5f5f5, #e8e8e8);
-            padding: 12px 16px;
-            font-weight: bold;
-            text-align: center;
-            border-bottom: 2px solid #764ba2;
-        }
-        .card-title i { color: #764ba2; margin-right: 8px; }
-        .card-content { padding: 16px; }
-        .menu-link {
-            display: block;
-            padding: 8px 0;
-            color: #5A4A12;
-            text-decoration: none;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .menu-link i { width: 24px; color: #764ba2; }
-        .menu-link:hover { color: #764ba2; padding-left: 8px; }
-        .search-form input {
-            width: 100%;
-            padding: 12px 14px;
-            margin: 8px 0 12px;
-            border: 2px solid #e0e0e0;
-            border-radius: 12px;
-            background: white;
-            font-size: 14px;
-            transition: all 0.3s;
-        }
-        .search-form input:focus {
-            outline: none;
-            border-color: #764ba2;
-            box-shadow: 0 0 5px rgba(118,75,162,0.3);
-        }
-        .search-form button {
-            width: 100%;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-            border: none;
-            padding: 12px;
-            border-radius: 12px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: 0.3s;
-        }
-        .search-form button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(118,75,162,0.3);
-        }
-        .results-area {
-            background: rgba(255,255,255,0.95);
-            border-radius: 20px;
-            overflow: hidden;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-        }
-        .results-header {
-            background: linear-gradient(135deg, #f5f5f5, #e8e8e8);
-            padding: 12px 20px;
-            border-bottom: 2px solid #764ba2;
-            font-weight: bold;
-        }
-        .results-header i { color: #764ba2; margin-right: 8px; }
-        .results-content {
-            padding: 24px;
-            min-height: 600px;
-            max-height: 75vh;
-            overflow-y: auto;
-        }
-        .word-card {
-            background: white;
-            padding: 16px 20px;
-            margin: 12px 0;
-            border-radius: 16px;
-            cursor: pointer;
-            transition: all 0.3s;
-            border: 1px solid #e0e0e0;
-        }
-        .word-card:hover {
-            transform: translateX(8px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-            border-color: #764ba2;
-        }
-        .word-jp {
-            font-size: 22px;
-            font-weight: bold;
-            color: #333;
-        }
-        .word-reading {
-            color: #764ba2;
-            font-size: 14px;
-            margin-top: 5px;
-        }
-        .word-ru {
-            margin-top: 10px;
-            font-size: 14px;
-            color: #666;
-            line-height: 1.5;
-        }
-        .word-example {
-            margin-top: 10px;
-            padding-top: 10px;
-            border-top: 1px dashed #e0e0e0;
-            font-size: 13px;
-            color: #999;
-        }
-        .loading { text-align: center; padding: 50px; }
-        .spinner {
-            width: 50px;
-            height: 50px;
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #764ba2;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-            margin: 0 auto 20px;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .footer {
-            text-align: center;
-            margin-top: 30px;
-            padding: 16px;
-            color: white;
-            font-size: 12px;
-        }
-        .error {
-            text-align: center;
-            padding: 40px;
-            color: #e74c3c;
-        }
-        .btn {
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-            border: none;
-            padding: 8px 18px;
-            border-radius: 12px;
-            cursor: pointer;
-            margin: 5px;
-            transition: 0.3s;
-        }
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(118,75,162,0.3);
-        }
-        .results-stats {
-            margin-bottom: 16px;
-            padding: 10px;
-            background: #f8f9fa;
-            border-radius: 12px;
-            font-size: 14px;
-        }
-        .kanji-char {
-            font-size: 80px;
-            text-align: center;
-            font-family: "MS Mincho", "Noto Sans CJK JP", serif;
-            margin: 20px 0;
-        }
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 20px auto; padding: 20px; background-color: #f4f4f9; color: #333; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+        .tab-btn { flex: 1; padding: 12px; border: none; background-color: #ddd; cursor: pointer; border-radius: 5px; font-weight: bold; font-size: 14px; }
+        .tab-btn.active { background-color: #007bff; color: white; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input, select, textarea { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
+        button.main-btn { width: 100%; padding: 14px; background-color: #28a745; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; font-weight: bold; }
+        button.main-btn:hover { background-color: #218838; }
+        .hidden { display: none; }
+        .task-img { max-width: 100%; margin: 10px 0; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .loading { text-align: center; color: #666; font-style: italic; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <div class="header">
-        <div class="logo">
-            <h1><i class="fas fa-language"></i> KanjiDB.Ru</h1>
-            <p>Японско-русский словарь | Warodai API</p>
-        </div>
-        <div class="badge">
-            <i class="fas fa-globe"></i> Warodai.ru | Бесплатно
-        </div>
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('create-screen')">Создать задачу</button>
+        <button class="tab-btn" onclick="switchTab('solve-screen')">Выполнить задачу</button>
     </div>
 
-    <div class="grid">
-        <div>
-            <div class="card">
-                <div class="card-title"><i class="fas fa-home"></i> Меню</div>
-                <div class="card-content">
-                    <div class="menu-link" onclick="showRandomWord()"><i class="fas fa-random"></i> Случайное слово</div>
-                    <div class="menu-link" onclick="showPopularWords()"><i class="fas fa-fire"></i> Популярные слова</div>
-                    <div class="menu-link" onclick="showHelp()"><i class="fas fa-question-circle"></i> Как пользоваться</div>
-                </div>
+    <!-- СЦЕНАРИЙ 1: СОЗДАНИЕ ЗАДАЧИ -->
+    <div id="create-screen" class="card">
+        <h2>Новая задача</h2>
+        <form id="task-form">
+            <div class="form-group">
+                <label>Название задачи:</label>
+                <input type="text" id="task-title" required placeholder="Например: Починить полку">
             </div>
-        </div>
-
-        <div class="results-area">
-            <div class="results-header">
-                <strong><i class="fas fa-search"></i> Результаты поиска</strong>
+            <div class="form-group">
+                <label>Категория:</label>
+                <select id="task-category">
+                    <option value="Дом">Дом 🏠</option>
+                    <option value="Работа">Работа 💼</option>
+                    <option value="Спорт">Спорт 🏃‍♂️</option>
+                    <option value="Учеба">Учеба 📚</option>
+                </select>
             </div>
-            <div class="results-content" id="results">
-                <div style="text-align: center; padding: 40px;">
-                    <i class="fas fa-search" style="font-size: 48px; opacity: 0.5; color: #764ba2;"></i>
-                    <p style="margin-top: 15px; color: #666;">Введите слово на русском или японском</p>
-                    <p style="margin-top: 10px; color: #999;">📌 Примеры: собака, кошка, 愛, 日本</p>
-                </div>
+            <div class="form-group">
+                <label>Приоритет:</label>
+                <select id="task-priority">
+                    <option value="Низкий">Низкий</option>
+                    <option value="Средний" selected>Средний</option>
+                    <option value="Высокий">Высокий</option>
+                </select>
             </div>
-        </div>
-
-        <div>
-            <div class="card">
-                <div class="card-title"><i class="fas fa-search"></i> Поиск</div>
-                <div class="card-content">
-                    <form onsubmit="searchWarodai(); return false;" class="search-form">
-                        <input type="text" id="searchInput" placeholder="Собака, кошка, любовь, 日本..." autofocus>
-                        <button type="submit"><i class="fas fa-search"></i> Найти слово</button>
-                    </form>
-                    <div style="margin-top: 12px; font-size: 11px; color: #999;">
-                        <i class="fas fa-info-circle"></i> Поиск на русском или японском
-                    </div>
-                </div>
+            <div class="form-group">
+                <label>Описание / Пункты:</label>
+                <textarea id="task-desc" rows="3" placeholder="Что нужно сделать..."></textarea>
             </div>
-
-            <div class="card">
-                <div class="card-title"><i class="fas fa-star"></i> Примеры</div>
-                <div class="card-content">
-                    <button class="btn" onclick="quickSearch('собака')" style="width: 100%; margin: 5px 0;">🐕 собака</button>
-                    <button class="btn" onclick="quickSearch('кошка')" style="width: 100%; margin: 5px 0;">🐱 кошка</button>
-                    <button class="btn" onclick="quickSearch('愛')" style="width: 100%; margin: 5px 0;">❤️ любовь</button>
-                    <button class="btn" onclick="quickSearch('日本')" style="width: 100%; margin: 5px 0;">🗾 Япония</button>
-                </div>
+            <div class="form-group">
+                <label>Фото «ДО» (необязательно):</label>
+                <input type="file" id="task-file-before" accept="image/*">
             </div>
-        </div>
+            <button type="submit" class="main-btn" id="submit-btn">Сохранить в общую БД</button>
+        </form>
     </div>
 
-    <div class="footer">
-        <i class="fas fa-code"></i> Данные: Warodai.ru API | Японско-русский словарь
-    </div>
-</div>
-
-<script>
-// Warodai API поиск
-async function searchWarodai() {
-    const query = document.getElementById('searchInput').value.trim();
-    if (!query) {
-        showError('Введите слово для поиска');
-        return;
-    }
-
-    showLoading();
-
-    try {
-        // Пробуем Warodai API
-        const warodaiUrl = `https://warodai.ru/api/v1/corpus/lookup/?keyword=${encodeURIComponent(query)}&corpus=warodai`;
-        const response = await fetch(warodaiUrl);
+    <!-- СЦЕНАРИЙ 2: ВЫПОЛНЕНИЕ ЗАДАЧ -->
+    <div id="solve-screen" class="card hidden">
+        <h2>Случайная задача из пула</h2>
+        <div id="screen-msg" class="loading">Нажмите кнопку ниже, чтобы получить задачу...</div>
         
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
-        }
-        
-        const data = await response.json();
-        
-        if (data && data.records && data.records.length > 0) {
-            displayWarodaiResults(data.records, query);
-        } else {
-            // Если ничего не найдено, пробуем Yarxi
-            await searchYarxi(query);
-        }
-    } catch (err) {
-        console.error('Warodai ошибка:', err);
-        // Пробуем резервный поиск
-        await searchYarxi(query);
-    }
-}
-
-// Yarxi.ru поиск (резервный)
-async function searchYarxi(query) {
-    try {
-        const formData = new URLSearchParams();
-        formData.append('R', '');
-        formData.append('M', query);
-        formData.append('Src', 'bytext');
-        
-        const response = await fetch('https://www.yarxi.ru/online/tsearch.php', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'X-Requested-With': 'XMLHttpRequest'
-            },
-            body: formData
-        });
-        
-        const html = await response.text();
-        const results = parseYarxiResults(html);
-        
-        if (results.length > 0) {
-            displayYarxiResults(results, query);
-        } else {
-            showError(`Ничего не найдено для "${query}"`);
-        }
-    } catch (err) {
-        console.error('Yarxi ошибка:', err);
-        showError(`Ошибка загрузки. Попробуйте другой запрос.`);
-    }
-}
-
-// Парсинг результатов Warodai
-function displayWarodaiResults(records, query) {
-    let html = `<div class="results-stats">
-        <i class="fas fa-check-circle" style="color: #27ae60;"></i> Найдено: ${records.length} записей для "${escapeHtml(query)}"
-    </div>`;
-    
-    for (const record of records) {
-        const jpWord = record.word || '?';
-        const reading = record.reading || '';
-        const translation = record.translation || '';
-        const partOfSpeech = record.part_of_speech || '';
-        
-        html += `
-            <div class="word-card" onclick="searchAgain('${jpWord.replace(/'/g, "\\'")}')">
-                <div class="word-jp">${escapeHtml(jpWord)}</div>
-                ${reading ? `<div class="word-reading"><i class="fas fa-microphone-alt"></i> ${escapeHtml(reading)}</div>` : ''}
-                ${partOfSpeech ? `<div class="word-reading"><i class="fas fa-tag"></i> ${escapeHtml(partOfSpeech)}</div>` : ''}
-                <div class="word-ru">📖 ${escapeHtml(translation)}</div>
-            </div>
-        `;
-    }
-    
-    document.getElementById('results').innerHTML = html;
-}
-
-// Парсинг Yarxi результатов
-function parseYarxiResults(html) {
-    const results = [];
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(html, 'text/html');
-    
-    // Ищем строки с результатами
-    const rows = doc.querySelectorAll('tr');
-    for (const row of rows) {
-        const cells = row.querySelectorAll('td');
-        if (cells.length >= 2) {
-            const jpWord = cells[0]?.textContent?.trim() || '';
-            const translation = cells[1]?.textContent?.trim() || '';
+        <div id="task-container" class="hidden">
+            <h3 id="view-title" style="color: #007bff; margin-top: 0;"></h3>
+            <p><strong>Категория:</strong> <span id="view-category"></span> | <strong>Приоритет:</strong> <span id="view-priority"></span></p>
+            <p><strong>Что сделать:</strong> <span id="view-desc"></span></p>
+            <div id="view-img-before-container"></div>
             
-            if (jpWord && translation && jpWord.length > 0 && translation.length > 0) {
-                results.push({ jpWord, translation });
+            <hr style="border: 0; border-top: 1px solid #ddd; margin: 20px 0;">
+            
+            <div class="form-group">
+                <label style="color: #d9534f;">📸 Сделать фотоотчет «ПОСЛЕ» (обязательно):</label>
+                <input type="file" id="task-file-after" accept="image/*">
+            </div>
+            <button class="main-btn" onclick="completeTask()" style="background-color: #007bff; margin-bottom: 12px;">✅ Готово! Отправить отчет</button>
+        </div>
+        
+        <button class="main-btn" id="next-btn" onclick="getRandomTask()" style="background-color: #6c757d;">🎲 Давай случайную задачу</button>
+    </div>
+
+    <script>
+        // КОНФИГУРАЦИЯ SUPABASE
+        const SUPABASE_URL = "ВАШ_SUPABASE_URL"; 
+        const SUPABASE_ANON_KEY = "ВАШ_SUPABASE_ANON_KEY";
+        const supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        let currentTask = null;
+
+        // Переключение вкладок
+        function switchTab(screenId) {
+            document.getElementById('create-screen').classList.add('hidden');
+            document.getElementById('solve-screen').classList.add('hidden');
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(screenId).classList.remove('hidden');
+            event.target.classList.add('active');
+        }
+
+        // Функция загрузки картинок в облако Supabase Storage
+        async function uploadImage(fileInputId) {
+            const fileInput = document.getElementById(fileInputId);
+            if (!fileInput.files || fileInput.files.length === 0) return null;
+            
+            const file = fileInput.files[0];
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+            const filePath = `uploads/${fileName}`;
+
+            const { data, error } = await supabase.storage.from('task-images').upload(filePath, file);
+            if (error) { alert('Ошибка загрузки фото: ' + error.message); return null; }
+
+            const { data: publicUrlData } = supabase.storage.from('task-images').getPublicUrl(filePath);
+            return publicUrlData.publicUrl;
+        }
+
+        // СЦЕНАРИЙ 1: Отправка формы (Создание задачи)
+        document.getElementById('task-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const btn = document.getElementById('submit-btn');
+            btn.innerText = "Сохранение...";
+            btn.disabled = true;
+
+            const photoBeforeUrl = await uploadImage('task-file-before');
+
+            const { error } = await supabase.from('tasks').insert([{
+                title: document.getElementById('task-title').value,
+                category: document.getElementById('task-category').value,
+                priority: document.getElementById('task-priority').value,
+                description: document.getElementById('task-desc').value,
+                photo_before_url: photoBeforeUrl,
+                status: 'Доступна'
+            }]);
+
+            btn.innerText = "Сохранить в общую БД";
+            btn.disabled = false;
+
+            if (error) {
+                alert('Ошибка сохранения: ' + error.message);
+            } else {
+                alert('Задача успешно улетела в облако!');
+                this.reset();
+            }
+        });
+
+        // СЦЕНАРИЙ 2: Получение случайной задачи
+        async function getRandomTask() {
+            const container = document.getElementById('task-container');
+            const msg = document.getElementById('screen-msg');
+            container.classList.add('hidden');
+            msg.innerText = "Ищу свободную задачу...";
+            msg.classList.remove('hidden');
+            
+            document.getElementById('task-file-after').value = ""; // Сброс инпута фото
+
+            // Запрашиваем все доступные задачи
+            const { data: availableTasks, error } = await supabase
+                .from('tasks')
+                .select('*')
+                .eq('status', 'Доступна');
+
+            if (error) { msg.innerText = "Ошибка: " + error.message; return; }
+
+            if (!availableTasks || availableTasks.length === 0) {
+                msg.innerText = "🎉 Все задачи выполнены! В пуле ничего нет.";
+                return;
+            }
+
+            // Нативный фронтенд-рандом среди строк из бд
+            const randomIndex = Math.floor(Math.random() * availableTasks.length);
+            currentTask = availableTasks[randomIndex];
+
+            // Заполняем интерфейс данными
+            msg.classList.add('hidden');
+            container.classList.remove('hidden');
+
+            document.getElementById('view-title').innerText = currentTask.title;
+            document.getElementById('view-category').innerText = currentTask.category;
+            document.getElementById('view-priority').innerText = currentTask.priority;
+            document.getElementById('view-desc').innerText = currentTask.description || 'Без описания';
+
+            const imgContainer = document.getElementById('view-img-before-container');
+            imgContainer.innerHTML = '';
+            if (currentTask.photo_before_url) {
+                imgContainer.innerHTML = `<label>Фото ДО:</label><img src="${currentTask.photo_before_url}" class="task-img">`;
             }
         }
-    }
-    
-    return results;
-}
 
-function displayYarxiResults(results, query) {
-    let html = `<div class="results-stats">
-        <i class="fas fa-check-circle" style="color: #27ae60;"></i> Найдено: ${results.length} результатов для "${escapeHtml(query)}" (Yarxi.ru)
-    </div>`;
-    
-    for (const result of results) {
-        html += `
-            <div class="word-card" onclick="searchAgain('${result.jpWord.replace(/'/g, "\\'")}')">
-                <div class="word-jp">${escapeHtml(result.jpWord)}</div>
-                <div class="word-ru">📖 ${escapeHtml(result.translation)}</div>
-            </div>
-        `;
-    }
-    
-    document.getElementById('results').innerHTML = html;
-}
+        // СЦЕНАРИЙ 2: Завершение задачи с фотоотчетом
+        async function completeTask() {
+            if (!currentTask) return;
 
-// Вспомогательные функции
-function quickSearch(word) {
-    document.getElementById('searchInput').value = word;
-    searchWarodai();
-}
+            const fileInput = document.getElementById('task-file-after');
+            if (!fileInput.files || fileInput.files.length === 0) {
+                alert('Пожалуйста, сделайте или прикрепите фотоотчет «ПОСЛЕ»!');
+                return;
+            }
 
-function searchAgain(word) {
-    document.getElementById('searchInput').value = word;
-    searchWarodai();
-}
+            const btn = event.target;
+            btn.innerText = "Отправка отчета...";
+            btn.disabled = true;
 
-function showRandomWord() {
-    const randomWords = ['собака', 'кошка', 'любовь', 'мир', 'солнце', 'луна', 'вода', 'огонь'];
-    const random = randomWords[Math.floor(Math.random() * randomWords.length)];
-    quickSearch(random);
-}
+            const photoAfterUrl = await uploadImage('task-file-after');
 
-function showPopularWords() {
-    const popular = [
-        { word: 'собака', emoji: '🐕' },
-        { word: 'кошка', emoji: '🐱' },
-        { word: 'любовь', emoji: '❤️' },
-        { word: 'мир', emoji: '🕊️' },
-        { word: 'солнце', emoji: '☀️' },
-        { word: 'луна', emoji: '🌙' }
-    ];
-    
-    let html = `
-        <div style="text-align: center;">
-            <h3><i class="fas fa-fire" style="color: #e74c3c;"></i> Популярные запросы</h3>
-            <div style="display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin: 24px 0;">
-                ${popular.map(p => `
-                    <button class="btn" onclick="quickSearch('${p.word}')">
-                        ${p.emoji} ${p.word}
-                    </button>
-                `).join('')}
-            </div>
-            <button class="btn" onclick="showRandomWord()">
-                <i class="fas fa-random"></i> Случайное слово
-            </button>
-        </div>
-    `;
-    
-    document.getElementById('results').innerHTML = html;
-}
+            if (!photoAfterUrl) { btn.innerText = "✅ Готово! Отправить отчет"; btn.disabled = false; return; }
 
-function showHelp() {
-    document.getElementById('results').innerHTML = `
-        <div style="padding: 8px;">
-            <h3><i class="fas fa-question-circle"></i> Как пользоваться словарём</h3>
-            <hr style="margin: 16px 0;">
-            <p><strong>🔍 Поиск:</strong> введите слово на русском или японском языке</p>
-            <br>
-            <p><strong>📚 Примеры:</strong></p>
-            <ul style="margin-left: 24px;">
-                <li><a onclick="quickSearch('собака')" style="cursor:pointer; color:#764ba2;">собака → 犬 (いぬ)</a></li>
-                <li><a onclick="quickSearch('кошка')" style="cursor:pointer; color:#764ba2;">кошка → 猫 (ねこ)</a></li>
-                <li><a onclick="quickSearch('愛')" style="cursor:pointer; color:#764ba2;">愛 → любовь</a></li>
-                <li><a onclick="quickSearch('日本')" style="cursor:pointer; color:#764ba2;">日本 → Япония</a></li>
-            </ul>
-            <br>
-            <p><strong>✅ Источники:</strong></p>
-            <ul>
-                <li>Warodai.ru - основной словарь</li>
-                <li>Yarxi.ru - резервный словарь</li>
-            </ul>
-        </div>
-    `;
-}
+            // Обновляем статус в базе данных
+            const { error } = await supabase
+                .from('tasks')
+                .update({ status: 'Выполнена', photo_after_url: photoAfterUrl })
+                .eq('id', currentTask.id);
 
-function showLoading() {
-    document.getElementById('results').innerHTML = `
-        <div class="loading">
-            <div class="spinner"></div>
-            <p>Поиск в словаре...</p>
-            <p style="font-size: 12px; margin-top: 10px; color: #999;">Поиск в Warodai и Yarxi</p>
-        </div>
-    `;
-}
+            btn.innerText = "✅ Готово! Отправить отчет";
+            btn.disabled = false;
 
-function showError(msg) {
-    document.getElementById('results').innerHTML = `
-        <div class="error">
-            <i class="fas fa-exclamation-triangle" style="font-size: 48px; margin-bottom: 16px; display: block; color: #e74c3c;"></i>
-            <p><strong>${escapeHtml(msg)}</strong></p>
-            <p style="margin-top: 20px;">💡 Попробуйте: собака, кошка, 愛, 日本</p>
-        </div>
-    `;
-}
-
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
-document.addEventListener('keypress', function(e) {
-    if (e.key === 'Enter' && document.activeElement?.id === 'searchInput') {
-        searchWarodai();
-    }
-});
-
-// Инициализация
-showPopularWords();
-</script>
+            if (error) {
+                alert('Не удалось сохранить отчет: ' + error.message);
+            } else {
+                alert('Отлично! Фотоотчет сохранен, задача закрыта.');
+                currentTask = null;
+                getRandomTask(); // Автоматически загружаем следующую рандомную задачу
+            }
+        }
+    </script>
 </body>
 </html>

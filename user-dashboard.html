@@ -34,10 +34,11 @@
         .task-card {
             border-left: 4px solid #667eea;
             transition: transform 0.2s;
+            margin-bottom: 15px;
         }
         .task-card:hover { transform: translateX(5px); }
         .task-title { font-size: 18px; font-weight: 600; color: #333; margin-bottom: 10px; }
-        .task-info { display: flex; gap: 15px; margin-bottom: 10px; font-size: 14px; }
+        .task-info { display: flex; gap: 15px; margin-bottom: 10px; font-size: 14px; flex-wrap: wrap; }
         .badge { padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
         .badge-high { background: #fee; color: #c00; }
         .badge-medium { background: #ffeaa7; color: #d63031; }
@@ -295,7 +296,7 @@
                     photo_before_url: photoUrl,
                     status: 'Доступна',
                     created_by: currentUser,
-                    created_at: new Date()
+                    created_at: new Date().toISOString()
                 }]);
                 
                 if (error) throw error;
@@ -319,7 +320,10 @@
                 .eq('created_by', currentUser)
                 .order('created_at', { ascending: false });
             
-            if (error) return;
+            if (error) {
+                console.error(error);
+                return;
+            }
             renderTasks(data, 'myTasksList', true);
         }
 
@@ -332,7 +336,10 @@
                 .neq('created_by', currentUser)
                 .order('created_at', { ascending: false });
             
-            if (error) return;
+            if (error) {
+                console.error(error);
+                return;
+            }
             renderTasks(data, 'availableTasksList', false);
         }
 
@@ -345,21 +352,32 @@
             
             container.innerHTML = tasks.map(task => `
                 <div class="card task-card" style="margin-bottom: 15px;">
-                    <div class="task-title">${task.title}</div>
+                    <div class="task-title">${escapeHtml(task.title)}</div>
                     <div class="task-info">
-                        <span>📍 ${task.location || 'Не указано'}</span>
+                        <span>📍 ${escapeHtml(task.location || 'Не указано')}</span>
                         <span class="badge ${getPriorityClass(task.priority)}">${task.priority}</span>
-                        ${showCreator ? `<span>👤 Создал: ${task.created_by}</span>` : ''}
+                        ${showCreator ? `<span>👤 Создал: ${escapeHtml(task.created_by)}</span>` : ''}
                     </div>
-                    <div class="task-desc">${task.description}</div>
-                    ${task.photo_before_url ? `<img src="${task.photo_before_url}" class="task-img">` : ''}
+                    <div class="task-desc">${escapeHtml(task.description)}</div>
+                    ${task.photo_before_url ? `<img src="${task.photo_before_url}" class="task-img" onerror="this.style.display='none'">` : ''}
                     ${!showCreator && task.status === 'Доступна' ? 
-                        `<button class="btn btn-success" style="margin-top: 10px;" onclick="openCompleteModal(${JSON.stringify(task).replace(/"/g, '&quot;')})">✅ Выполнить</button>` : 
+                        `<button class="btn btn-success" style="margin-top: 10px;" onclick='openCompleteModal(${JSON.stringify(task)})'>✅ Выполнить</button>` : 
                         task.status === 'Выполнена' ? '<span style="color: green;">✅ Выполнена</span>' : ''
                     }
-                    ${task.completed_by ? `<div style="margin-top: 10px; font-size: 12px; color: #666;">✅ Выполнил: ${task.completed_by}</div>` : ''}
+                    ${task.completed_by ? `<div style="margin-top: 10px; font-size: 12px; color: #666;">✅ Выполнил: ${escapeHtml(task.completed_by)}</div>` : ''}
+                    ${task.completed_comment ? `<div style="margin-top: 10px; font-size: 12px; color: #666;">💬 ${escapeHtml(task.completed_comment)}</div>` : ''}
                 </div>
             `).join('');
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/[&<>]/g, function(m) {
+                if (m === '&') return '&amp;';
+                if (m === '<') return '&lt;';
+                if (m === '>') return '&gt;';
+                return m;
+            });
         }
 
         function getPriorityClass(priority) {
@@ -370,10 +388,10 @@
         function openCompleteModal(task) {
             currentTaskToComplete = task;
             document.getElementById('modalTaskInfo').innerHTML = `
-                <div class="task-title">${task.title}</div>
-                <div class="task-info">📍 ${task.location || 'Не указано'} | Приоритет: ${task.priority}</div>
-                <div class="task-desc">${task.description}</div>
-                ${task.photo_before_url ? `<img src="${task.photo_before_url}" class="task-img">` : ''}
+                <div class="task-title">${escapeHtml(task.title)}</div>
+                <div class="task-info">📍 ${escapeHtml(task.location || 'Не указано')} | Приоритет: ${task.priority}</div>
+                <div class="task-desc">${escapeHtml(task.description)}</div>
+                ${task.photo_before_url ? `<img src="${task.photo_before_url}" class="task-img" onerror="this.style.display='none'">` : ''}
             `;
             document.getElementById('completeModal').style.display = 'flex';
         }
@@ -407,7 +425,7 @@
                         photo_after_url: photoUrl,
                         completed_by: currentUser,
                         completed_comment: comment,
-                        completed_at: new Date()
+                        completed_at: new Date().toISOString()
                     })
                     .eq('id', currentTaskToComplete.id);
                 

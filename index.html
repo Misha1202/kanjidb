@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Задачник - Совместное выполнение задач</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/browser-image-compression/2.0.2/browser-image-compression.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -156,6 +157,11 @@
             margin: 10px 0;
             border-radius: 8px;
         }
+        .compress-info {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
     </style>
 </head>
 <body>
@@ -204,8 +210,9 @@
                     </div>
                     <div class="form-group">
                         <label>📸 Фото «ДО» (необязательно)</label>
-                        <input type="file" id="task-file-before" accept="image/*" onchange="previewImage(this, 'before-preview')">
+                        <input type="file" id="task-file-before" accept="image/jpeg,image/png,image/webp" onchange="previewImage(this, 'before-preview')">
                         <div id="before-preview"></div>
+                        <div class="compress-info">✨ Фото будут автоматически сжаты для экономии места</div>
                     </div>
                     <button type="submit" class="main-btn">✨ Сохранить задачу</button>
                 </form>
@@ -231,7 +238,7 @@
                     
                     <div class="form-group">
                         <label style="color: #e74c3c;">📸 Фотоотчет «ПОСЛЕ» *</label>
-                        <input type="file" id="task-file-after" accept="image/*" onchange="previewImage(this, 'after-preview')">
+                        <input type="file" id="task-file-after" accept="image/jpeg,image/png,image/webp" onchange="previewImage(this, 'after-preview')">
                         <div id="after-preview"></div>
                         <small style="color: #666;">Обязательно прикрепите фото выполненной работы</small>
                     </div>
@@ -254,12 +261,35 @@
         
         let currentTask = null;
 
+        // Функция сжатия изображения
+        async function compressImage(file) {
+            if (!file) return null;
+            
+            const options = {
+                maxSizeMB: 0.5, // Максимальный размер 500KB
+                maxWidthOrHeight: 1024, // Максимальная ширина или высота
+                useWebWorker: true,
+                fileType: 'image/jpeg',
+                initialQuality: 0.8
+            };
+            
+            try {
+                console.log('Оригинальный размер:', (file.size / 1024).toFixed(2), 'KB');
+                const compressedFile = await imageCompression(file, options);
+                console.log('Сжатый размер:', (compressedFile.size / 1024).toFixed(2), 'KB');
+                return compressedFile;
+            } catch (error) {
+                console.error('Ошибка сжатия:', error);
+                return file; // Возвращаем оригинал в случае ошибки
+            }
+        }
+
         function previewImage(input, previewId) {
             const preview = document.getElementById(previewId);
             if (input.files && input.files[0]) {
                 const reader = new FileReader();
                 reader.onload = function(e) {
-                    preview.innerHTML = `<img src="${e.target.result}" class="image-preview" alt="Preview">`;
+                    preview.innerHTML = `<img src="${e.target.result}" class="image-preview" alt="Preview"><div class="compress-info">📸 Фото подготовлено к загрузке</div>`;
                 };
                 reader.readAsDataURL(input.files[0]);
             } else {
@@ -295,26 +325,22 @@
             const fileInput = document.getElementById(fileInputId);
             if (!fileInput.files || fileInput.files.length === 0) return null;
             
-            const file = fileInput.files[0];
+            let file = fileInput.files[0];
             
-            if (file.size > 5 * 1024 * 1024) {
-                showMessage('Файл слишком большой! Максимум 5MB', true);
-                return null;
-            }
+            // Сжимаем изображение
+            file = await compressImage(file);
             
-            const fileExt = file.name.split('.').pop();
+            const fileExt = 'jpg';
             const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
             const filePath = `public/${fileName}`;
 
             try {
-                console.log('Начинаем загрузку файла:', fileName);
-                
                 const { data, error } = await supabaseClient.storage
                     .from('task-images')
                     .upload(filePath, file, {
                         cacheControl: '3600',
                         upsert: false,
-                        contentType: file.type
+                        contentType: 'image/jpeg'
                     });
 
                 if (error) {
@@ -323,8 +349,6 @@
                     return null;
                 }
 
-                console.log('Файл загружен успешно:', data);
-                
                 const { data: publicUrlData } = supabaseClient.storage
                     .from('task-images')
                     .getPublicUrl(filePath);
@@ -499,7 +523,7 @@
                 showMessage('✅ Подключение к базе данных установлено!');
             } catch (error) {
                 console.error('❌ Ошибка подключения к Supabase:', error);
-                showMessage('⚠️ Не удалось подключиться к базе данных. Проверьте настройки Supabase.', true);
+                showMessage('⚠️ Не удалось подключиться к базе данных.', true);
             }
         });
     </script>

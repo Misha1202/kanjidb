@@ -26,6 +26,26 @@
             align-items: center;
             box-shadow: 0 4px 15px rgba(0,0,0,0.1);
         }
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .tab {
+            flex: 1;
+            padding: 12px;
+            background: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+        .tab.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
         .card {
             background: white;
             border-radius: 15px;
@@ -125,7 +145,7 @@
         }
         .form-group { margin-bottom: 20px; text-align: left; }
         label { display: block; margin-bottom: 8px; font-weight: 600; }
-        input, textarea {
+        input, select, textarea {
             width: 100%;
             padding: 12px;
             border: 2px solid #e0e0e0;
@@ -147,13 +167,20 @@
             font-weight: 600;
             color: #667eea;
         }
-        .task-status {
-            display: inline-block;
-            padding: 5px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            background: #e3f2fd;
-            color: #1976d2;
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: #f0f0f0;
+            border-radius: 2px;
+            overflow: hidden;
+            margin-top: 10px;
+            display: none;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            width: 0%;
+            transition: width 0.3s;
         }
     </style>
 </head>
@@ -167,8 +194,13 @@
             <button class="btn logout-btn" onclick="logout()">🚪 Выйти</button>
         </div>
 
-        <!-- Основная карточка с задачей -->
-        <div class="card task-card" id="taskCard">
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('execute')">🎯 Выполнить задачу</button>
+            <button class="tab" onclick="switchTab('create')">➕ Создать задачу</button>
+        </div>
+
+        <!-- Вкладка выполнения задачи -->
+        <div id="executeTab" class="card task-card">
             <div id="taskContent">
                 <div class="loading">
                     🎲 Нажмите кнопку, чтобы получить задачу
@@ -181,6 +213,45 @@
             <button class="btn btn-primary" id="getTaskBtn" onclick="getRandomTask()" style="width: 100%; margin-top: 20px;">
                 🎲 Получить случайную задачу
             </button>
+        </div>
+
+        <!-- Вкладка создания задачи -->
+        <div id="createTab" class="card" style="display: none;">
+            <h3>📝 Создать новую задачу</h3>
+            <form id="taskForm">
+                <div class="form-group">
+                    <label>Тип задачи *</label>
+                    <select id="taskType" required>
+                        <option value="Гнутая полка">🔧 Гнутая полка</option>
+                        <option value="Рваная коробка">📦 Рваная коробка</option>
+                        <option value="Беспорядок">🗑️ Беспорядок</option>
+                        <option value="Другое">✨ Другое</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Местоположение *</label>
+                    <input type="text" id="taskLocation" placeholder="Например: Стеллаж А3, полка 2" required>
+                </div>
+                <div class="form-group">
+                    <label>Приоритет</label>
+                    <select id="taskPriority">
+                        <option value="Низкий">🟢 Низкий</option>
+                        <option value="Средний" selected>🟡 Средний</option>
+                        <option value="Высокий">🔴 Высокий</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Описание / Комментарий</label>
+                    <textarea id="taskDesc" rows="3" placeholder="Подробности задачи..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>📸 Фото (обязательно)</label>
+                    <input type="file" id="taskPhoto" accept="image/*" onchange="previewCreatePhoto(this)" required>
+                    <div id="createPreview"></div>
+                </div>
+                <div class="progress-bar" id="progressBar"><div class="progress-fill" id="progressFill"></div></div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">✅ Создать задачу</button>
+            </form>
         </div>
     </div>
 
@@ -228,7 +299,6 @@
         
         let currentUser = localStorage.getItem('userId');
         let currentTask = null;
-        let skipTaskId = null;
 
         // Проверка авторизации
         if (!currentUser) {
@@ -256,6 +326,23 @@
             throw new Error('Ошибка загрузки фото');
         }
 
+        // Переключение вкладок
+        window.switchTab = function(tab) {
+            if (tab === 'execute') {
+                document.getElementById('executeTab').style.display = 'block';
+                document.getElementById('createTab').style.display = 'none';
+                document.querySelectorAll('.tab')[0].classList.add('active');
+                document.querySelectorAll('.tab')[1].classList.remove('active');
+            } else {
+                document.getElementById('executeTab').style.display = 'none';
+                document.getElementById('createTab').style.display = 'block';
+                document.querySelectorAll('.tab')[0].classList.remove('active');
+                document.querySelectorAll('.tab')[1].classList.add('active');
+            }
+        }
+
+        // ========== ВЫПОЛНЕНИЕ ЗАДАЧ ==========
+        
         // Получение случайной задачи
         window.getRandomTask = async function() {
             const taskContent = document.getElementById('taskContent');
@@ -267,7 +354,6 @@
             getTaskBtn.disabled = true;
             
             try {
-                // Получаем все доступные задачи (не созданные текущим пользователем)
                 const { data: availableTasks, error } = await supabaseClient
                     .from('tasks')
                     .select('*')
@@ -281,17 +367,15 @@
                     taskContent.innerHTML = `
                         <div class="loading">
                             🎉 Поздравляем! Все задачи выполнены! 🎉<br>
-                            <small style="font-size: 12px;">Нет доступных задач</small>
+                            <small style="font-size: 12px;">Создайте новую задачу или подождите</small>
                         </div>
                     `;
                     return;
                 }
                 
-                // Выбираем случайную задачу
                 const randomIndex = Math.floor(Math.random() * availableTasks.length);
                 currentTask = availableTasks[randomIndex];
                 
-                // Отображаем задачу
                 taskContent.innerHTML = `
                     <div class="task-title">${escapeHtml(currentTask.title)}</div>
                     <div class="task-info">
@@ -310,25 +394,20 @@
             }
         }
         
-        // Пропуск задачи
         window.skipTask = function() {
             if (!currentTask) return;
-            skipTaskId = currentTask.id;
             document.getElementById('skipModal').style.display = 'flex';
         }
         
         function closeSkipModal() {
             document.getElementById('skipModal').style.display = 'none';
-            skipTaskId = null;
         }
         
         async function confirmSkip() {
             closeSkipModal();
-            // Просто пропускаем задачу и загружаем новую
             await getRandomTask();
         }
         
-        // Открытие модалки выполнения
         window.openCompleteModal = function() {
             if (!currentTask) return;
             
@@ -357,7 +436,6 @@
             } else preview.innerHTML = '';
         }
         
-        // Отправка выполнения
         async function submitComplete() {
             const photoInput = document.getElementById('completePhoto');
             if (!photoInput.files || !photoInput.files[0]) {
@@ -370,14 +448,11 @@
             btn.textContent = "⏳ Загрузка...";
             
             try {
-                // Сжимаем и загружаем фото
                 let file = photoInput.files[0];
                 file = await compressImage(file);
                 const photoUrl = await uploadToImgBB(file);
-                
                 const comment = document.getElementById('completeComment').value;
                 
-                // Обновляем задачу
                 const { error } = await supabaseClient
                     .from('tasks')
                     .update({
@@ -393,8 +468,6 @@
                 
                 alert('🎉 Отлично! Задача выполнена!');
                 closeCompleteModal();
-                
-                // Загружаем новую задачу
                 await getRandomTask();
                 
             } catch (error) {
@@ -404,6 +477,74 @@
                 btn.textContent = "✅ Завершить";
             }
         }
+
+        // ========== СОЗДАНИЕ ЗАДАЧ ==========
+        
+        function previewCreatePhoto(input) {
+            const preview = document.getElementById('createPreview');
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = e => preview.innerHTML = `<img src="${e.target.result}" class="image-preview">`;
+                reader.readAsDataURL(input.files[0]);
+            } else preview.innerHTML = '';
+        }
+        
+        function showProgress(show, percent = 0) {
+            const bar = document.getElementById('progressBar');
+            const fill = document.getElementById('progressFill');
+            if (show) {
+                bar.style.display = 'block';
+                fill.style.width = percent + '%';
+            } else bar.style.display = 'none';
+        }
+        
+        document.getElementById('taskForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = e.target.querySelector('button[type="submit"]');
+            btn.disabled = true;
+            btn.textContent = "⏳ Загрузка...";
+            
+            try {
+                showProgress(true, 30);
+                let photoUrl = null;
+                const photoInput = document.getElementById('taskPhoto');
+                if (photoInput.files && photoInput.files[0]) {
+                    let file = photoInput.files[0];
+                    file = await compressImage(file);
+                    photoUrl = await uploadToImgBB(file);
+                }
+                showProgress(true, 70);
+                
+                const taskType = document.getElementById('taskType').value;
+                
+                const { error } = await supabaseClient.from('tasks').insert([{
+                    title: taskType,
+                    category: taskType,
+                    location: document.getElementById('taskLocation').value,
+                    priority: document.getElementById('taskPriority').value,
+                    description: document.getElementById('taskDesc').value || 'Нет описания',
+                    photo_before_url: photoUrl,
+                    status: 'Доступна',
+                    created_by: currentUser,
+                    created_at: new Date().toISOString()
+                }]);
+                
+                if (error) throw error;
+                
+                alert('✅ Задача успешно создана!');
+                document.getElementById('taskForm').reset();
+                document.getElementById('createPreview').innerHTML = '';
+                
+            } catch (error) {
+                alert('❌ Ошибка: ' + error.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = "✅ Создать задачу";
+                showProgress(false);
+            }
+        });
+        
+        // ========== ОБЩИЕ ФУНКЦИИ ==========
         
         function escapeHtml(str) {
             if (!str) return '';
@@ -431,9 +572,10 @@
         window.closeCompleteModal = closeCompleteModal;
         window.submitComplete = submitComplete;
         window.previewCompletePhoto = previewCompletePhoto;
+        window.previewCreatePhoto = previewCreatePhoto;
         window.logout = logout;
         
-        // При загрузке автоматически показываем задачу
+        // При загрузке показываем задачу
         getRandomTask();
     </script>
 </body>

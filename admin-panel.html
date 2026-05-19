@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Админ-панель - Мезонин</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .task-card {
+            border-left: 4px solid #f5576c;
+            margin-bottom: 15px;
+            transition: transform 0.2s;
+        }
+        .task-title { font-size: 18px; font-weight: 600; margin-bottom: 10px; }
+        .task-info { display: flex; gap: 15px; margin-bottom: 10px; font-size: 14px; flex-wrap: wrap; }
+        .badge { padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+        .badge-high { background: #fee; color: #c00; }
+        .badge-medium { background: #ffeaa7; color: #d63031; }
+        .badge-low { background: #e8f5e9; color: #27ae60; }
+        .task-img { max-width: 100%; max-height: 150px; border-radius: 8px; margin-top: 10px; }
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        .btn-danger { background: #dc3545; color: white; }
+        .btn-warning { background: #ffc107; color: #333; }
+        .logout-btn { background: rgba(255,255,255,0.2); color: white; }
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .stat-card { background: white; padding: 20px; border-radius: 15px; text-align: center; }
+        .stat-number { font-size: 32px; font-weight: bold; color: #f5576c; }
+        .filters { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+        .filter-btn { padding: 8px 16px; background: white; border: 2px solid #e0e0e0; border-radius: 8px; cursor: pointer; }
+        .filter-btn.active { background: #f5576c; color: white; border-color: #f5576c; }
+        input, select { padding: 8px; border: 2px solid #e0e0e0; border-radius: 8px; }
+        .search-box { flex: 1; min-width: 200px; }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: 600; }
+        textarea { width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div>
+                <h2>👑 Админ-панель Мезонин</h2>
+                <p style="font-size: 14px; opacity: 0.9;">Управление задачами и сотрудниками</p>
+            </div>
+            <button class="btn logout-btn" onclick="logout()">🚪 Выйти</button>
+        </div>
+
+        <div class="stats" id="stats"></div>
+
+        <div class="card">
+            <div class="filters">
+                <input type="text" id="searchInput" class="search-box" placeholder="🔍 Поиск по названию, месту, сотруднику..." onkeyup="filterTasks()">
+                <select id="statusFilter" onchange="filterTasks()">
+                    <option value="all">Все статусы</option>
+                    <option value="Доступна">📋 Доступна</option>
+                    <option value="Выполнена">✅ Выполнена</option>
+                </select>
+                <select id="priorityFilter" onchange="filterTasks()">
+                    <option value="all">Все приоритеты</option>
+                    <option value="Высокий">🔴 Высокий</option>
+                    <option value="Средний">🟡 Средний</option>
+                    <option value="Низкий">🟢 Низкий</option>
+                </select>
+            </div>
+            <div id="tasksList"></div>
+        </div>
+    </div>
+
+    <!-- Модальное окно редактирования -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <h3>✏️ Редактировать задачу</h3>
+            <div class="form-group">
+                <label>Название</label>
+                <input type="text" id="editTitle">
+            </div>
+            <div class="form-group">
+                <label>Местоположение</label>
+                <input type="text" id="editLocation">
+            </div>
+            <div class="form-group">
+                <label>Приоритет</label>
+                <select id="editPriority">
+                    <option value="Низкий">Низкий</option>
+                    <option value="Средний">Средний</option>
+                    <option value="Высокий">Высокий</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Описание</label>
+                <textarea id="editDesc" rows="3"></textarea>
+            </div>
+            <div class="form-group">
+                <label>Статус</label>
+                <select id="editStatus">
+                    <option value="Доступна">Доступна</option>
+                    <option value="Выполнена">Выполнена</option>
+                </select>
+            </div>
+            <button class="btn btn-warning" onclick="saveEdit()" style="width: 100%;">💾 Сохранить</button>
+            <button class="btn btn-danger" onclick="closeEditModal()" style="width: 100%; margin-top: 10px;">❌ Отмена</button>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = "https://zukiqrltjqsaeetxmnez.supabase.co";
+        const SUPABASE_ANON_KEY = "sb_publishable_sbsCtuNxNmC2u-nAsNaDmQ_bBXDfr5f";
+        
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        let allTasks = [];
+        let currentEditTask = null;
+
+        // Проверка прав админа
+        if (localStorage.getItem('userRole') !== 'admin') {
+            window.location.href = 'index.html';
+        }
+
+        async function loadStats() {
+            const { data } = await supabaseClient.from('tasks').select('*');
+            if (!data) return;
+            
+            const total = data.length;
+            const available = data.filter(t => t.status === 'Доступна').length;
+            const completed = data.filter(t => t.status === 'Выполнена').length;
+            const highPriority = data.filter(t => t.priority === 'Высокий' && t.status === 'Доступна').length;
+            
+            document.getElementById('stats').innerHTML = `
+                <div class="stat-card"><div class="stat-number">${total}</div><div>Всего задач</div></div>
+                <div class="stat-card"><div class="stat-number">${available}</div><div>Доступно</div></div>
+                <div class="stat-card"><div class="stat-number">${completed}</div><div>Выполнено</div></div>
+                <div class="stat-card"><div class="stat-number">${highPriority}</div><div>🔥 Высокий приоритет</div></div>
+            `;
+        }
+
+        async function loadTasks() {
+            const { data, error } = await supabaseClient
+                .from('tasks')
+                .select('*')
+                .order('created_at', { ascending: false });
+            
+            if (error) return;
+            allTasks = data;
+            filterTasks();
+        }
+
+        function filterTasks() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const statusFilter = document.getElementById('statusFilter').value;
+            const priorityFilter = document.getElementById('priorityFilter').value;
+            
+            let filtered = allTasks.filter(task => {
+                if (statusFilter !== 'all' && task.status !== statusFilter) return false;
+                if (priorityFilter !== 'all' && task.priority !== priorityFilter) return false;
+                if (searchTerm && !task.title.toLowerCase().includes(searchTerm) && 
+                    !(task.location || '').toLowerCase().includes(searchTerm) &&
+                    !(task.created_by || '').toLowerCase().includes(searchTerm) &&
+                    !(task.completed_by || '').toLowerCase().includes(searchTerm)) return false;
+                return true;
+            });
+            
+            renderTasks(filtered);
+        }
+
+        function renderTasks(tasks) {
+            const container = document.getElementById('tasksList');
+            if (!tasks || tasks.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: #666;">📭 Нет задач</p>';
+                return;
+            }
+            
+            container.innerHTML = tasks.map(task => `
+                <div class="card task-card">
+                    <div class="task-title">${task.title}</div>
+                    <div class="task-info">
+                        <span>📍 ${task.location || 'Не указано'}</span>
+                        <span class="badge ${getPriorityClass(task.priority)}">${task.priority}</span>
+                        <span class="badge ${task.status === 'Доступна' ? 'badge-low' : ''}" style="background: ${task.status === 'Выполнена' ? '#d4edda' : '#e3f2fd'}">${task.status}</span>
+                    </div>
+                    <div class="task-info">
+                        <span>👤 Создал: ${task.created_by || 'Неизвестно'}</span>
+                        ${task.completed_by ? `<span>✅ Выполнил: ${task.completed_by}</span>` : ''}
+                        <span>📅 ${new Date(task.created_at).toLocaleDateString()}</span>
+                    </div>
+                    <div class="task-desc">${task.description}</div>
+                    ${task.photo_before_url ? `<img src="${task.photo_before_url}" class="task-img">` : ''}
+                    ${task.photo_after_url ? `<div><strong>Фото ПОСЛЕ:</strong><br><img src="${task.photo_after_url}" class="task-img"></div>` : ''}
+                    ${task.completed_comment ? `<div><strong>💬 Комментарий:</strong> ${task.completed_comment}</div>` : ''}
+                    <div style="margin-top: 10px; display: flex; gap: 10px;">
+                        <button class="btn btn-warning" onclick="openEditModal(${JSON.stringify(task).replace(/"/g, '&quot;')})">✏️ Редактировать</button>
+                        <button class="btn btn-danger" onclick="deleteTask('${task.id}')">🗑️ Удалить</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function getPriorityClass(priority) {
+            const map = { 'Высокий': 'badge-high', 'Средний': 'badge-medium', 'Низкий': 'badge-low' };
+            return map[priority] || 'badge-medium';
+        }
+
+        function openEditModal(task) {
+            currentEditTask = task;
+            document.getElementById('editTitle').value = task.title;
+            document.getElementById('editLocation').value = task.location || '';
+            document.getElementById('editPriority').value = task.priority;
+            document.getElementById('editDesc').value = task.description;
+            document.getElementById('editStatus').value = task.status;
+            document.getElementById('editModal').style.display = 'flex';
+        }
+
+        async function saveEdit() {
+            const { error } = await supabaseClient
+                .from('tasks')
+                .update({
+                    title: document.getElementById('editTitle').value,
+                    location: document.getElementById('editLocation').value,
+                    priority: document.getElementById('editPriority').value,
+                    description: document.getElementById('editDesc').value,
+                    status: document.getElementById('editStatus').value
+                })
+                .eq('id', currentEditTask.id);
+            
+            if (error) {
+                alert('Ошибка: ' + error.message);
+            } else {
+                alert('✅ Задача обновлена');
+                closeEditModal();
+                loadTasks();
+                loadStats();
+            }
+        }
+
+        async function deleteTask(id) {
+            if (confirm('Удалить задачу? Это действие нельзя отменить!')) {
+                const { error } = await supabaseClient.from('tasks').delete().eq('id', id);
+                if (error) {
+                    alert('Ошибка: ' + error.message);
+                } else {
+                    alert('✅ Задача удалена');
+                    loadTasks();
+                    loadStats();
+                }
+            }
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').style.display = 'none';
+            currentEditTask = null;
+        }
+
+        function logout() {
+            localStorage.clear();
+            window.location.href = 'index.html';
+        }
+
+        window.filterTasks = filterTasks;
+        window.openEditModal = openEditModal;
+        window.saveEdit = saveEdit;
+        window.deleteTask = deleteTask;
+        window.closeEditModal = closeEditModal;
+        window.logout = logout;
+
+        // Загрузка начальных данных
+        loadStats();
+        loadTasks();
+    </script>
+</body>
+</html>

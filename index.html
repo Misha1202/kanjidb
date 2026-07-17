@@ -259,6 +259,9 @@
                         const container = document.createElement('div');
                         container.style.width = size + 'px';
                         container.style.height = size + 'px';
+                        container.style.position = 'fixed';
+                        container.style.left = '-9999px';
+                        container.style.top = '-9999px';
                         document.body.appendChild(container);
 
                         const qr = new QRCode(container, {
@@ -280,7 +283,7 @@
                                 document.body.removeChild(container);
                                 reject(new Error('QR-код не создан'));
                             }
-                        }, 100);
+                        }, 150);
                     } catch (e) {
                         reject(e);
                     }
@@ -303,12 +306,22 @@
                     return;
                 }
 
+                // Проверка загрузки jsPDF
+                let jsPDFLib;
+                if (typeof window.jspdf !== 'undefined' && window.jspdf.jsPDF) {
+                    jsPDFLib = window.jspdf.jsPDF;
+                } else if (typeof window.jsPDF !== 'undefined') {
+                    jsPDFLib = window.jsPDF;
+                } else {
+                    showStatus('❌ Библиотека jsPDF не загружена', 'error');
+                    return;
+                }
+
                 try {
                     showStatus('⏳ Генерация PDF...', 'ok');
 
                     // Создаём PDF
-                    const { jsPDF } = window.jspdf;
-                    const doc = new jsPDF({
+                    const doc = new jsPDFLib({
                         orientation: 'portrait',
                         unit: 'mm',
                         format: 'a4'
@@ -413,13 +426,20 @@
             if (typeof QRCode === 'undefined') {
                 showStatus('⚠️ Библиотека QRCode.js не загружена. Проверьте интернет.', 'error');
             }
-            if (typeof window.jspdf === 'undefined') {
+            
+            let jsPDFLoaded = false;
+            if (typeof window.jspdf !== 'undefined' && window.jspdf.jsPDF) {
+                jsPDFLoaded = true;
+            } else if (typeof window.jsPDF !== 'undefined') {
+                jsPDFLoaded = true;
+            }
+            if (!jsPDFLoaded) {
                 showStatus('⚠️ Библиотека jsPDF не загружена. Проверьте интернет.', 'error');
             }
 
             console.log('✅ MRT PDF Generator готов');
             console.log('📚 QRCode.js:', typeof QRCode !== 'undefined' ? 'загружен' : 'не загружен');
-            console.log('📚 jsPDF:', typeof window.jspdf !== 'undefined' ? 'загружен' : 'не загружен');
+            console.log('📚 jsPDF:', jsPDFLoaded ? 'загружен' : 'не загружен');
 
         })();
     </script>

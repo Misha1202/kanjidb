@@ -1,365 +1,18 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Тепловая карта: Нагрузка ПВЗ</title>
-  <!-- Подключаем библиотеку для чтения Excel -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <style>
-    :root {
-      --bg-body: #0f1115;
-      --bg-panel: #181c24;
-      --bg-card: #202530;
-      --text-main: #e5e7eb;
-      --text-muted: #9ca3af;
-      --border: #333;
-      
-      /* Цвета тепловой карты */
-      --color-high: #10b981;       /* Зеленый */
-      --color-mid: #f59e0b;        /* Желтый */
-      --color-low: #ef4444;        /* Красный */
-      --color-empty: #11151f;      /* Темно-серый */
-      
-      --primary: #3b82f6;
-      --success: #10b981;
-      --danger: #ef4444;
-    }
-
-    body {
-      background-color: var(--bg-body);
-      color: var(--text-main);
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      margin: 0;
-      padding: 20px;
-      line-height: 1.5;
-    }
-
-    /* Header */
-    header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 24px;
-      padding-bottom: 16px;
-      border-bottom: 1px solid var(--border);
-    }
-
-    h1 { margin: 0; font-size: 24px; font-weight: 600; }
-    .subtitle { color: var(--text-muted); margin-top: 4px; font-size: 14px; }
-
-    /* Controls */
-    .controls {
-      display: flex;
-      gap: 12px;
-      flex-wrap: wrap;
-      align-items: center;
-    }
-
-    button {
-      padding: 10px 16px;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      font-weight: 500;
-      transition: all 0.2s;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-    }
-    button:hover { transform: translateY(-1px); opacity: 0.9; }
-    button:active { transform: translateY(0); }
-
-    .btn-primary { background-color: var(--primary); color: white; }
-    .btn-success { background-color: var(--success); color: white; }
-    .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-main); }
-    .btn-outline:hover { border-color: var(--text-muted); }
-
-    select {
-      padding: 10px 12px;
-      border-radius: 6px;
-      border: 1px solid var(--border);
-      background: var(--bg-panel);
-      color: white;
-      font-size: 14px;
-      outline: none;
-      cursor: pointer;
-    }
-
-    /* Drop Zone */
-    .drop-zone {
-      border: 2px dashed var(--border);
-      border-radius: 12px;
-      padding: 32px;
-      text-align: center;
-      background: var(--bg-panel);
-      color: var(--text-muted);
-      cursor: pointer;
-      margin-bottom: 24px;
-      transition: all 0.3s;
-    }
-    .drop-zone:hover { border-color: var(--primary); color: var(--text-main); background: #252a35; }
-    .drop-zone.dragover { border-color: var(--success); background: #1a202a; }
-    .drop-icon { font-size: 48px; margin-bottom: 12px; display: block; }
-
-    /* Stats Bar */
-    .stats-bar {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-      gap: 16px;
-      margin-bottom: 24px;
-    }
-    .stat-card {
-      background: var(--bg-panel);
-      padding: 16px;
-      border-radius: 8px;
-      border-left: 4px solid var(--primary);
-    }
-    .stat-card.high { border-left-color: var(--color-high); }
-    .stat-card.mid { border-left-color: var(--color-mid); }
-    .stat-card.low { border-left-color: var(--color-low); }
-    .stat-value { font-size: 24px; font-weight: 700; color: var(--text-main); }
-    .stat-label { font-size: 13px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
-
-    /* Heatmap Container */
-    .heatmap-container {
-      background: var(--bg-card);
-      border-radius: 12px;
-      padding: 20px;
-      margin-bottom: 24px;
-      overflow-x: auto; /* Горизонтальная прокрутка при необходимости */
-      box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-    }
-
-    .heatmap-grid {
-      display: grid;
-      grid-template-columns: repeat(9, minmax(60px, 1fr)); /* 9 колонок, адаптивная ширина */
-      grid-template-rows: repeat(6, minmax(60px, 1fr));  /* 6 строк */
-      gap: 8px;
-      width: max-content; /* Фиксирует ширину контента */
-      padding-bottom: 8px;
-    }
-
-    .cell {
-      position: relative;
-      background: var(--color-empty);
-      border-radius: 8px;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      padding: 4px;
-      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.05);
-      transition: transform 0.2s, box-shadow 0.2s;
-      cursor: default;
-      user-select: none;
-    }
-    .cell:hover { transform: scale(1.05); z-index: 10; box-shadow: 0 4px 12px rgba(0,0,0,0.4); }
-
-    .cell.high { background: rgba(16, 185, 129, 0.2); border: 1px solid rgba(16, 185, 129, 0.4); }
-    .cell.mid { background: rgba(245, 158, 11, 0.2); border: 1px solid rgba(245, 158, 11, 0.4); }
-    .cell.low { background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.4); }
-
-    .cell-num {
-      position: absolute;
-      top: 4px;
-      left: 4px;
-      font-size: 10px;
-      color: var(--text-muted);
-      font-weight: 600;
-      background: rgba(0,0,0,0.5);
-      padding: 1px 4px;
-      border-radius: 4px;
-    }
-
-    .cell-qty {
-      font-size: 18px;
-      font-weight: 700;
-      color: white;
-      text-shadow: 0 1px 2px black;
-    }
-
-    .cell-addr {
-      font-size: 11px;
-      color: var(--text-muted);
-      text-align: center;
-      max-width: 90%;
-      margin-top: 4px;
-      line-height: 1.2;
-    }
-
-    /* Legend */
-    .legend {
-      display: flex;
-      gap: 16px;
-      justify-content: center;
-      margin-bottom: 24px;
-      flex-wrap: wrap;
-    }
-    .legend-item {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      background: var(--bg-panel);
-      padding: 6px 12px;
-      border-radius: 20px;
-      font-size: 13px;
-    }
-    .legend-color {
-      width: 12px;
-      height: 12px;
-      border-radius: 4px;
-    }
-
-    /* Table */
-    .table-container {
-      overflow-x: auto;
-      background: var(--bg-panel);
-      border-radius: 12px;
-      padding: 16px;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      min-width: 600px;
-    }
-    th, td {
-      text-align: left;
-      padding: 12px 16px;
-      border-bottom: 1px solid var(--border);
-    }
-    th {
-      color: var(--text-muted);
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-    tr:last-child td { border-bottom: none; }
-    
-    .status-badge {
-      padding: 4px 8px;
-      border-radius: 4px;
-      font-size: 12px;
-      font-weight: 600;
-    }
-    .badge-high { background: rgba(16, 185, 129, 0.2); color: var(--color-high); }
-    .badge-mid { background: rgba(245, 158, 11, 0.2); color: var(--color-mid); }
-    .badge-low { background: rgba(239, 68, 68, 0.2); color: var(--color-low); }
-
-    /* Loader */
-    .loader {
-      border: 4px solid var(--border);
-      border-top: 4px solid var(--primary);
-      border-radius: 50%;
-      width: 36px;
-      height: 36px;
-      animation: spin 1s linear infinite;
-      margin: 20px auto;
-    }
-    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-    .hidden { display: none; }
-  </style>
-</head>
-<body>
-
-<header>
-  <div>
-    <h1>Тепловая карта нагрузки</h1>
-    <div class="subtitle">Распределение по 54 ячейкам (6×9)</div>
-  </div>
-  <div class="controls">
-    <button class="btn-outline" onclick="document.getElementById('file-input').click()">
-      📂 Загрузить Excel
-    </button>
-    <input type="file" id="file-input" accept=".xlsx,.xls" style="display:none" onchange="handleFile(this)">
-    <button class="btn-success" onclick="exportReport()" id="btn-export" disabled>
-      💾 Скачать отчет
-    </button>
-  </div>
-</header>
-
-<div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
-  <span class="drop-icon">📄</span>
-  <p>Перетащите файл Excel сюда</p>
-  <p style="font-size: 13px; margin-top: 8px; color: #6b7280;">
-    Формат: Адрес, Квадрат, Кол-во коробок
-  </p>
-</div>
-
-<div class="stats-bar" id="stats-bar" class="hidden">
-  <div class="stat-card">
-    <div class="stat-label">Всего ПВЗ</div>
-    <div class="stat-value" id="stat-total">0</div>
-  </div>
-  <div class="stat-card high">
-    <div class="stat-label">Коробок (Всего)</div>
-    <div class="stat-value" id="stat-boxes">0</div>
-  </div>
-  <div class="stat-card mid">
-    <div class="stat-label">Средний чек (короб/ПВЗ)</div>
-    <div class="stat-value" id="stat-avg">0</div>
-  </div>
-</div>
-
-<div class="controls" style="margin-bottom: 16px;">
-  <label style="color: var(--text-muted); font-weight: 500;">Квадрат:</label>
-  <select id="square-select" onchange="renderHeatmap()" disabled>
-    <option value="">Загрузка...</option>
-  </select>
-</div>
-
-<div class="legend">
-  <div class="legend-item">
-    <div class="legend-color" style="background: var(--color-high);"></div>
-    <span>Высокая нагрузка (Ходовой)</span>
-  </div>
-  <div class="legend-item">
-    <div class="legend-color" style="background: var(--color-mid);"></div>
-    <span>Средняя нагрузка</span>
-  </div>
-  <div class="legend-item">
-    <div class="legend-color" style="background: var(--color-low);"></div>
-    <span>Низкая нагрузка</span>
-  </div>
-  <div class="legend-item">
-    <div class="legend-color" style="background: var(--color-empty);"></div>
-    <span>Пусто</span>
-  </div>
-</div>
-
-<div class="heatmap-container">
-  <div class="heatmap-grid" id="heatmap-grid">
-    <!-- Ячейки генерируются JS -->
-  </div>
-</div>
-
-<div class="table-container">
-  <table>
-    <thead>
-      <tr>
-        <th>№</th>
-        <th>Адрес ПВЗ</th>
-        <th>Квадрат</th>
-        <th>Коробок</th>
-        <th>Уровень</th>
-      </tr>
-    </thead>
-    <tbody id="table-body">
-      <!-- Строки таблицы -->
-    </tbody>
-  </table>
-</div>
-
 <script>
-  let rawData = ;
+  let rawData = [];
   let currentSquare = null;
 
-  // Настройка порогов (в процентах от максимума в квадрате)
-  const THRESHOLDS = {
-    HIGH: 0.7, // >70% от максимума
-    MID: 0.3   // от 30% до 70%
-  };
+  const THRESHOLDS = { HIGH: 0.7, MID: 0.3 };
+
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  function getLevel(ratio) {
+    if (ratio >= THRESHOLDS.HIGH) return { cls: 'high', text: 'Ходовой', badge: 'badge-high' };
+    if (ratio >= THRESHOLDS.MID)  return { cls: 'mid',  text: 'Средний', badge: 'badge-mid' };
+    return { cls: 'low', text: 'Низкий', badge: 'badge-low' };
+  }
 
   // --- Инициализация ---
   function init() {
@@ -375,14 +28,13 @@
       if (e.dataTransfer.files.length) handleFile({ files: e.dataTransfer.files });
     });
 
-    // Создаем пустую сетку 54 ячейки
     const grid = document.getElementById('heatmap-grid');
     grid.innerHTML = '';
     for (let i = 1; i <= 54; i++) {
       const cell = document.createElement('div');
       cell.className = 'cell';
       cell.innerHTML = `
-        <span class="cell-num">\${i}</span>
+        <span class="cell-num">${i}</span>
         <div class="cell-qty">0</div>
         <div class="cell-addr">Нет данных</div>
       `;
@@ -393,23 +45,29 @@
 
   // --- Обработка файла ---
   function handleFile(input) {
-    const file = input.files;
+    const file = input.files && input.files[0];
     if (!file) return;
 
-    const btnExport = document.getElementById('btn-export');
-    btnExport.disabled = true;
+    document.getElementById('btn-export').disabled = true;
 
     const reader = new FileReader();
     reader.onload = e => {
-      const data = new Uint8Array(e.target.result);
-      const workbook = XLSX.read(data, {type: 'array'});
-      const firstSheetName = workbook.SheetNames;
-      const worksheet = workbook.Sheets[firstSheetName];
-      const json = XLSX.utils.sheet_to_json(worksheet, {header: 1});
-
-      processExcelData(json);
+      try {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+        processExcelData(json);
+      } catch (err) {
+        alert('Не удалось прочитать файл: ' + err.message);
+      }
     };
+    reader.onerror = () => alert('Ошибка чтения файла');
     reader.readAsArrayBuffer(file);
+
+    // чтобы можно было загрузить тот же файл повторно
+    if (input.value !== undefined) input.value = '';
   }
 
   function processExcelData(json) {
@@ -418,34 +76,37 @@
       return;
     }
 
-    const headers = json.map(h => String(h).toLowerCase().trim());
+    const headers = json[0].map(h => String(h ?? '').toLowerCase().trim());
     const colMap = {};
-    
-    // Авто-поиск колонок
+
     headers.forEach((h, i) => {
-      if (h.includes('квадрат') || h.includes('место') || h.includes('cs')) colMap.square = i;
-      if (h.includes('адрес') || h.includes('офис') || h.includes('pvz')) colMap.address = i;
-      if (h.includes('кол') || h.includes('qty') || h.includes('вес') || h.includes('короб')) colMap.qty = i;
+      if (colMap.square  === undefined && (h.includes('квадрат') || h.includes('место') || h.includes('cs'))) colMap.square = i;
+      if (colMap.address === undefined && (h.includes('адрес') || h.includes('офис') || h.includes('pvz'))) colMap.address = i;
+      if (colMap.qty     === undefined && (h.includes('кол') || h.includes('qty') || h.includes('вес') || h.includes('короб'))) colMap.qty = i;
     });
 
-    if (!colMap.square || !colMap.address || !colMap.qty) {
-      alert('Ошибка: Не найдены обязательные колонки.\nНайдено: ' + JSON.stringify(headers));
+    if (colMap.square === undefined || colMap.address === undefined || colMap.qty === undefined) {
+      alert('Ошибка: не найдены обязательные колонки.\nНайдено: ' + JSON.stringify(headers));
       return;
     }
 
-    rawData = ;
+    rawData = [];
     for (let i = 1; i < json.length; i++) {
       const row = json[i];
-      const square = String(row[colMap.square] || '').trim();
-      const address = String(row[colMap.address] || '').trim();
-      const qty = parseFloat(row[colMap.qty]) || 0;
+      if (!row) continue;
+      const square  = String(row[colMap.square]  ?? '').trim();
+      const address = String(row[colMap.address] ?? '').trim();
+      const qty = parseFloat(String(row[colMap.qty]).replace(',', '.')) || 0;
 
       if (!square || !address) continue;
-
       rawData.push({ square, address, qty });
     }
 
-    // Заполняем селектор квадратов
+    if (rawData.length === 0) {
+      alert('Не найдено ни одной валидной строки');
+      return;
+    }
+
     const uniqueSquares = [...new Set(rawData.map(d => d.square))].sort();
     const select = document.getElementById('square-select');
     select.innerHTML = '';
@@ -455,14 +116,12 @@
       opt.textContent = sq;
       select.appendChild(opt);
     });
-    
+
     select.disabled = false;
-    currentSquare = uniqueSquares;
-    
-    // Первый расчет
+    select.value = uniqueSquares[0];
+    currentSquare = uniqueSquares[0];
+
     renderHeatmap();
-    
-    // Включаем кнопку экспорта
     document.getElementById('btn-export').disabled = false;
   }
 
@@ -477,94 +136,50 @@
       return;
     }
 
-    // 1. Находим максимум для нормализации цветов
-    const maxQty = Math.max(...squareData.map(d => d.qty));
-    
-    // 2. Сортируем по убыванию (чтобы самые тяжелые попали в первые ячейки 1, 2, 3...)
+    const maxQty = Math.max(...squareData.map(d => d.qty)) || 1;
     squareData.sort((a, b) => b.qty - a.qty);
 
-    // 3. Обновляем сетку
-    const grid = document.getElementById('heatmap-grid');
-    const cells = grid.querySelectorAll('.cell');
-    
-    // Сбрасываем все ячейки в "пусто"
+    const cells = document.querySelectorAll('#heatmap-grid .cell');
     cells.forEach(c => {
       c.className = 'cell';
       c.querySelector('.cell-qty').textContent = '0';
       c.querySelector('.cell-addr').textContent = 'Нет данных';
+      c.removeAttribute('title');
     });
 
-    // Заполняем данными
     squareData.forEach((item, index) => {
-      if (index >= 54) return; // Защита от выхода за пределы сетки
-      
+      if (index >= 54) return;
       const cell = cells[index];
-      const ratio = item.qty / maxQty;
-      
-      let levelClass = '';
-      let levelText = 'Низкий';
-      let badgeClass = 'badge-low';
+      const lvl = getLevel(item.qty / maxQty);
 
-      if (ratio >= THRESHOLDS.HIGH) {
-        levelClass = 'high';
-        levelText = 'Ходовой';
-        badgeClass = 'badge-high';
-      } else if (ratio >= THRESHOLDS.MID) {
-        levelClass = 'mid';
-        levelText = 'Средний';
-        badgeClass = 'badge-mid';
-      }
-
-      cell.classList.add(levelClass);
+      cell.classList.add(lvl.cls);
       cell.querySelector('.cell-qty').textContent = item.qty;
-      
-      // Обрезаем адрес для красоты
-      const shortAddr = item.address.length > 20 ? item.address.substring(0, 18) + '...' : item.address;
-      cell.querySelector('.cell-addr').textContent = shortAddr;
-      
-      // Сохраняем данные для таблицы
-      cell.dataset.address = item.address;
-      cell.dataset.qty = item.qty;
-      cell.dataset.level = levelText;
-      cell.dataset.badge = badgeClass;
+      cell.querySelector('.cell-addr').textContent =
+        item.address.length > 20 ? item.address.substring(0, 18) + '...' : item.address;
+      cell.title = `${item.address} — ${item.qty} (${lvl.text})`;
     });
 
-    // 4. Обновляем таблицу
     updateTable(squareData, maxQty);
 
-    // 5. Обновляем статистику
     const totalBoxes = squareData.reduce((sum, d) => sum + d.qty, 0);
-    const avgBoxes = Math.round(totalBoxes / squareData.length);
-    
     document.getElementById('stat-total').textContent = squareData.length;
     document.getElementById('stat-boxes').textContent = totalBoxes;
-    document.getElementById('stat-avg').textContent = avgBoxes;
+    document.getElementById('stat-avg').textContent = Math.round(totalBoxes / squareData.length);
   }
 
   function updateTable(data, maxQty) {
     const tbody = document.getElementById('table-body');
     tbody.innerHTML = '';
-    
-    data.forEach((item, index) => {
-      const ratio = item.qty / maxQty;
-      let badgeClass = 'badge-low';
-      let levelText = 'Низкий';
-      
-      if (ratio >= THRESHOLDS.HIGH) {
-        badgeClass = 'badge-high';
-        levelText = 'Ходовой';
-      } else if (ratio >= THRESHOLDS.MID) {
-        badgeClass = 'badge-mid';
-        levelText = 'Средний';
-      }
 
+    data.forEach((item, index) => {
+      const lvl = getLevel(item.qty / maxQty);
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td>\${index + 1}</td>
-        <td>\${item.address}</td>
-        <td>\${item.square}</td>
-        <td>\${item.qty}</td>
-        <td><span class="\${badgeClass}">\${levelText}</span></td>
+        <td>${index + 1}</td>
+        <td>${esc(item.address)}</td>
+        <td>${esc(item.square)}</td>
+        <td>${item.qty}</td>
+        <td><span class="status-badge ${lvl.badge}">${lvl.text}</span></td>
       `;
       tbody.appendChild(tr);
     });
@@ -572,27 +187,20 @@
 
   // --- Экспорт ---
   function exportReport() {
-    if (rawData.length === 0) return;
-    
+    if (!rawData.length) return;
+
     const exportData = rawData.filter(d => d.square === currentSquare);
-    exportData.sort((a,b) => b.qty - a.qty);
+    exportData.sort((a, b) => b.qty - a.qty);
+    const max = Math.max(...exportData.map(x => x.qty)) || 1;
 
-    const wb = XLSX.utils.book_new();
     const wsData = [['Ячейка №', 'Адрес ПВЗ', 'Квадрат', 'Коробок', 'Уровень']];
-    
-    const max = Math.max(...exportData.map(x=>x.qty));
-
     exportData.forEach((d, i) => {
-      const ratio = d.qty / max;
-      const lvl = ratio >= 0.7 ? 'Ходовой' : (ratio >= 0.3 ? 'Средний' : 'Низкий');
-      wsData.push([i+1, d.address, d.square, d.qty, lvl]);
+      wsData.push([i + 1, d.address, d.square, d.qty, getLevel(d.qty / max).text]);
     });
 
-    const ws = XLSX.utils.aoa_to_sheet(wsData);
-    XLSX.utils.book_append_sheet(wb, ws, 'Heatmap_Report');
-    XLSX.writeFile(wb, `heatmap_report_\${currentSquare.replace(/[^a-z0-9]/gi,'').substring(0,10)}.xlsx`);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(wsData), 'Heatmap_Report');
+    const safeName = currentSquare.replace(/[^\wа-яё]/gi, '').substring(0, 20) || 'report';
+    XLSX.writeFile(wb, `heatmap_report_${safeName}.xlsx`);
   }
 </script>
-
-</body>
-</html>

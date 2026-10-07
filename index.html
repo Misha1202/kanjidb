@@ -6,11 +6,16 @@
     <title>Распределение нагрузки по КС</title>
     
     <!-- 
-    ВАЖНО ДЛЯ GITHUB: 
-    Скачайте файл xlsx.full.min.js и положите его в корень репозитория.
-    Затем раскомментируйте строку ниже:
+    ВАРИАНТ 1 (Рекомендуемый): Локальный файл.
+    Скачайте xlsx.full.min.js и положите рядом с index.html
     -->
-    <!-- <script src="xlsx.full.min.js"></script> -->
+    <script src="xlsx.full.min.js"></script>
+
+    <!-- 
+    ВАРИАНТ 2 (Если не хотите скачивать): 
+    Закомментируйте строку выше и раскомментируйте эту.
+    -->
+    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script> -->
 
     <style>
         :root {
@@ -125,7 +130,7 @@
         .btn-calc { background: var(--lvl3); color: black; }
         .btn-download { background: var(--success); }
 
-        /* --- СЕТКА (Точная копия картинки) --- */
+        /* --- СЕТКА --- */
         .grid-wrapper {
             display: flex;
             justify-content: center;
@@ -138,18 +143,16 @@
 
         .grid {
             display: grid;
-            /* 6 групп по 3 колонки */
             grid-template-columns: repeat(6, auto); 
-            gap: 15px; /* Отступ между группами */
+            gap: 15px; 
             padding: 10px;
-            border: 2px dashed var(--lvl2); /* Зеленая рамка как на картинке */
+            border: 2px dashed var(--lvl2); 
         }
 
         .group {
             display: grid;
-            /* Внутри группы 3 колонки */
             grid-template-columns: repeat(3, 1fr);
-            gap: 2px; /* Маленький отступ между ячейками внутри группы */
+            gap: 2px; 
             border: 1px solid rgba(255,255,255,0.05);
             padding: 2px;
             background: rgba(255,255,255,0.02);
@@ -157,7 +160,7 @@
 
         .cell {
             width: 55px;
-            height: 60px; /* Прямоугольники */
+            height: 60px; 
             background: var(--bg-cell);
             border: 1px solid #000;
             display: flex;
@@ -175,7 +178,6 @@
         .cell:hover { background: #30363d; }
         .cell:active { transform: scale(0.95); }
 
-        /* Заполненные ячейки */
         .cell.filled { color: white; }
         .cell.level-1 { background: rgba(59, 130, 246, 0.3); border-color: var(--lvl1); }
         .cell.level-2 { background: rgba(16, 185, 129, 0.3); border-color: var(--lvl2); }
@@ -237,17 +239,12 @@
     <!-- Вкладка 1: Распределение -->
     <div id="tab-distribution" class="tab-content active">
         <div class="controls">
-            <!-- Кнопка загрузки (демо) -->
-            <button class="btn-load" onclick="loadDemoData()">📂 Загрузить демо-данные</button>
-            
-            <!-- 
-            Для реального Excel:
+            <!-- Кнопка загрузки Excel -->
             <input type="file" id="excel-file" accept=".xlsx, .xls" onchange="handleFileUpload(this)" style="display:none;">
             <button class="btn-load" onclick="document.getElementById('excel-file').click()">📂 Загрузить Excel</button>
-            -->
 
             <select id="ks-select" disabled>
-                <option value="">-- Сначала загрузите данные --</option>
+                <option value="">-- Сначала загрузите файл --</option>
             </select>
 
             <div style="flex-grow: 1;"></div>
@@ -263,7 +260,7 @@
             </div>
         </div>
         
-        <div class="status-bar" id="status-text">Система готова. Загрузите данные.</div>
+        <div class="status-bar" id="status-text">Система готова. Загрузите Excel-файл.</div>
     </div>
 
     <!-- Вкладка 2: Расчёт по квадрату -->
@@ -291,32 +288,16 @@
 </div>
 
 <script>
-    // --- ДАННЫЕ ---
-    const demoData = {
-        "МСК Новоданиловская набережная 12": [36, 36, 36],
-        "деревня Авдотьино Овражная Улица 4": [42, 42],
-        "МСК Проспект Куприна 11к2": [54, 54],
-        "деревня Грабченки Деревня Грабченки 206": [54, 54],
-        "МСК Большая Черемушкинская Улица 2ас1": [64, 64],
-        "село Сосновка Школьная Улица 23": [67, 67],
-        "МСК Квартал № 160 1вк3": [73, 73],
-        "поселок городского типа Михнево Библиотечная Улица 20": [75, 75],
-        "деревня Проводы Дорожная Улица 1а": [76, 76],
-        "Ступино улица Маяковского 21к1": [83, 83],
-        "деревня Журавна Деревня Журавна 60": [85, 85]
-    };
-
-    let ksData = {}; 
-    let cellData = {}; 
+    // --- ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ---
+    let ksData = {}; // Данные из Excel: { "Адрес КС": [кол-во1, кол-во2, ...] }
+    let cellData = {}; // Состояние ячеек
     let calculatedResults = [];
 
     // --- ВКЛАДКИ ---
     function switchTab(tabId, element) {
-        // Убираем активный класс у всех вкладок и контента
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
         document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
         
-        // Добавляем активный класс нажатой вкладке и соответствующему контенту
         element.classList.add('active');
         document.getElementById(`tab-${tabId}`).classList.add('active');
     }
@@ -326,19 +307,15 @@
         const gridContainer = document.getElementById('grid-view');
         gridContainer.innerHTML = '';
 
-        // Генерация структуры: 6 групп по 3 колонки
-        // Логика нумерации: сверху вниз (1, 2, 3), затем следующая колонка (4, 5, 6) и т.д.
         let cellCounter = 1;
 
         for (let groupIndex = 0; groupIndex < 6; groupIndex++) {
             const groupDiv = document.createElement('div');
             groupDiv.className = 'group';
 
-            // Внутри группы 3 колонки
             for (let col = 0; col < 3; col++) {
-                // Идем по строкам (их 3)
                 for (let row = 0; row < 3; row++) {
-                    const num = cellCounter; // Номер ячейки 1..54
+                    const num = cellCounter;
                     
                     const cellDiv = document.createElement('div');
                     cellDiv.className = 'cell';
@@ -360,49 +337,65 @@
         renderGrid();
     }
 
-    // --- ЛОГИКА ДАННЫХ ---
-
-    function loadDemoData() {
-        ksData = demoData;
-        updateStatus("Демо-данные загружены.", "var(--lvl2)");
-        enableControls();
-        populateDropdown();
-    }
-
-    // Реальная загрузка Excel (раскомментировать при подключении библиотеки)
-    /*
+    // --- ЗАГРУЗКА EXCEL ---
     function handleFileUpload(input) {
         const file = input.files[0];
         if (!file) return;
+
         const reader = new FileReader();
+
         reader.onload = function(e) {
-            const data = new Uint8Array(e.target.result);
-            const workbook = XLSX.read(data, {type: 'array'});
-            const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-            const jsonData = XLSX.utils.sheet_to_json(worksheet);
-            
-            ksData = {};
-            let foundRows = 0;
-            jsonData.forEach(row => {
-                const address = row['Value.place_name'];
-                if (address) {
-                    if (!ksData[address]) ksData[address] = [];
-                    ksData[address].push(Number(row['data.Количество']) || 0); // Берем кол-во
-                    foundRows++;
-                }
-            });
-            
-            if (foundRows > 0) {
-                updateStatus(`Загружено строк: ${foundRows}`, "var(--lvl2)");
-                enableControls();
-                populateDropdown();
-            } else {
-                updateStatus("Ошибка: Не найдена колонка 'Value.place_name'", "var(--danger)");
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, {type: 'array'});
+                
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                const jsonData = XLSX.utils.sheet_to_json(worksheet);
+                
+                processData(jsonData);
+            } catch (err) {
+                console.error(err);
+                updateStatus("Ошибка чтения файла. Проверьте формат.", "var(--danger)");
             }
         };
+
         reader.readAsArrayBuffer(file);
     }
-    */
+
+    function processData(rows) {
+        ksData = {};
+        let foundRows = 0;
+        
+        // Ищем колонку с количеством (гибкий поиск)
+        let quantityColumn = null;
+        if (rows.length > 0) {
+            const keys = Object.keys(rows[0]);
+            quantityColumn = keys.find(k => k.toLowerCase().includes('количество') || k.toLowerCase().includes('кол-во'));
+            if (!quantityColumn && keys.length > 1) quantityColumn = keys[1];
+        }
+
+        rows.forEach(row => {
+            const address = row['Value.place_name'];
+            const qty = quantityColumn ? row[quantityColumn] : 0;
+
+            if (address) {
+                if (!ksData[address]) {
+                    ksData[address] = [];
+                }
+                ksData[address].push(Number(qty) || 0);
+                foundRows++;
+            }
+        });
+
+        if (foundRows > 0) {
+            updateStatus(`Успешно загружено строк: ${foundRows}`, "var(--lvl2)");
+            enableControls();
+            populateDropdown();
+        } else {
+            updateStatus("Ошибка: Не найдена колонка 'Value.place_name'", "var(--danger)");
+        }
+    }
 
     function enableControls() {
         document.getElementById('ks-select').disabled = false;
@@ -423,6 +416,7 @@
         });
     }
 
+    // --- ЛОГИКА СЕТКИ ---
     function handleCellClick(num) {
         const select = document.getElementById('ks-select');
         const selectedKs = select.value;
@@ -438,16 +432,13 @@
             cellData[num].ks = selectedKs;
             const availableValues = ksData[selectedKs];
             
-            // Считаем, сколько ячеек уже занято этим КС
             let usedCount = 0;
             for(let i=1; i<=54; i++) { if(cellData[i].ks === selectedKs) usedCount++; }
             
-            // Берем значение из массива (если закончились, берем последнее или 0)
             const valIndex = Math.min(usedCount, availableValues.length - 1);
             cellData[num].baseVal = availableValues[valIndex] || 0;
             cellData[num].level = 1; 
         } else {
-            // Циклическое переключение уровня: 1 -> 2 -> 3 -> Сброс
             cellData[num].level++;
             if (cellData[num].level > 3) {
                 cellData[num].ks = null;
@@ -480,7 +471,6 @@
     }
 
     // --- РАСЧЕТ ---
-
     function calculateLoad() {
         const groups = {};
         for (let i = 1; i <= 54; i++) {
@@ -497,10 +487,8 @@
 
         calculatedResults = Object.values(groups).sort((a, b) => b.maxLevel - a.maxLevel);
         
-        // Обновляем таблицу
         renderResultsTable();
         
-        // Визуальный отклик
         const btn = document.getElementById('btn-calc');
         const originalText = btn.innerHTML;
         btn.innerHTML = '✅ Готово!';
@@ -542,7 +530,6 @@
     }
 
     // --- СБРОС И СКАЧИВАНИЕ ---
-
     function resetLevels() {
         if(!confirm("Очистить всю сетку?")) return;
         for (let i = 1; i <= 54; i++) {
@@ -560,7 +547,6 @@
             return;
         }
 
-        // Формируем CSV (открывается в Excel)
         let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; 
         csvContent += "КС;Ячейки;Всего коробок;Уровень\n";
 
@@ -587,7 +573,6 @@
 
     // Запуск приложения
     init();
-
 </script>
 </body>
 </html>

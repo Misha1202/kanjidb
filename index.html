@@ -3,601 +3,591 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Распределение нагрузки</title>
+    <title>Распределение нагрузки по КС</title>
     
-    <!-- Библиотека Excel (Раскомментируйте, когда скачаете файл xlsx.full.min.js в папку с проектом) -->
+    <!-- 
+    ВАЖНО ДЛЯ GITHUB: 
+    Скачайте файл xlsx.full.min.js и положите его в корень репозитория.
+    Затем раскомментируйте строку ниже:
+    -->
     <!-- <script src="xlsx.full.min.js"></script> -->
-    
-    <!-- Подключение шрифтов и иконок -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
+
     <style>
         :root {
-            --bg-color: #0f1115;
-            --panel-bg: #1a1d24;
-            --border-color: #2d333b;
-            --text-main: #e6edf3;
+            --bg-body: #0d1117;
+            --bg-panel: #161b22;
+            --bg-cell: #21262d;
+            --border-main: #30363d;
+            --border-active: #58a6ff;
+            --text-main: #c9d1d9;
             --text-muted: #8b949e;
-            --accent-blue: #3b82f6;
-            --accent-green: #10b981;
-            --accent-yellow: #f59e0b;
-            --accent-red: #ef4444;
-            --accent-purple: #8b5cf6;
+            
+            --lvl1: #3b82f6;
+            --lvl2: #10b981;
+            --lvl3: #f59e0b;
+            --danger: #ef4444;
+            --success: #238636;
         }
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
 
-        body { 
-            font-family: 'Inter', sans-serif; 
-            background-color: var(--bg-color); 
-            color: var(--text-main); 
-            padding: 24px;
-            min-height: 100vh;
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            padding: 20px;
             display: flex;
-            flex-direction: column;
-            align-items: center;
+            justify-content: center;
         }
 
-        .app-container {
+        .app {
             width: 100%;
-            max-width: 1400px;
+            max-width: 1200px;
+            background: var(--bg-panel);
+            border: 1px solid var(--border-main);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }
 
-        /* --- Заголовок --- */
-        .header {
-            margin-bottom: 24px;
+        /* --- Вкладки --- */
+        .tabs {
             display: flex;
-            align-items: center;
-            gap: 12px;
+            background: #0d1117;
+            border-bottom: 1px solid var(--border-main);
         }
-        .header h1 {
-            font-size: 24px;
+
+        .tab {
+            padding: 15px 25px;
+            cursor: pointer;
             font-weight: 600;
+            color: var(--text-muted);
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+            user-select: none;
         }
-        .header i {
-            color: var(--accent-blue);
-            font-size: 28px;
+
+        .tab:hover { color: var(--text-main); background: rgba(255,255,255,0.05); }
+        .tab.active {
+            color: white;
+            border-bottom-color: var(--lvl1);
+            background: var(--bg-panel);
         }
+
+        /* --- Контент вкладок --- */
+        .tab-content {
+            display: none;
+            padding: 20px;
+        }
+        .tab-content.active { display: block; }
 
         /* --- Панель управления --- */
-        .control-panel {
-            background-color: var(--panel-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 24px;
+        .controls {
             display: flex;
             flex-wrap: wrap;
-            gap: 16px;
+            gap: 15px;
             align-items: center;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
+            margin-bottom: 25px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border-main);
         }
 
-        /* Группы элементов в панели */
-        .control-group {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            background: #0f1115;
-            padding: 8px 12px;
-            border-radius: 8px;
-            border: 1px solid var(--border-color);
-        }
-
-        .control-group label {
-            font-size: 14px;
-            font-weight: 500;
-            color: var(--text-muted);
-            white-space: nowrap;
-        }
-
-        /* Кастомный select */
-        select { 
-            padding: 8px 12px; 
-            font-size: 14px; 
-            border-radius: 6px; 
-            border: 1px solid #444c56; 
-            background: #22272e; 
-            color: white; 
-            min-width: 250px; 
-            cursor: pointer;
-            outline: none;
-            transition: border-color 0.2s;
-            font-family: inherit;
-        }
-        select:focus { border-color: var(--accent-blue); }
-        select:disabled { opacity: 0.5; cursor: not-allowed; }
-
-        /* Кнопки */
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            padding: 10px 16px;
-            font-size: 14px;
-            font-weight: 600;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            font-family: inherit;
-        }
-        .btn:hover:not(:disabled) { transform: translateY(-1px); filter: brightness(1.1); }
-        .btn:active:not(:disabled) { transform: translateY(0); }
-        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-        .btn-upload { background-color: var(--accent-purple); color: white; }
-        .btn-reset { background-color: #2d333b; color: #e6edf3; }
-        .btn-calc { background-color: var(--accent-yellow); color: #000; }
-        .btn-view { background-color: var(--accent-blue); color: white; }
-        .btn-download { background-color: var(--accent-green); color: white; }
-
-        /* --- Сетка --- */
-        .grid-wrapper {
-            background-color: var(--panel-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 24px;
-            overflow-x: auto;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
-            display: flex;
-            justify-content: center;
-        }
-
-        .grid-container { 
-            display: grid; 
-            grid-template-columns: repeat(18, 1fr); 
-            gap: 4px; 
-            background: #000;
-            border: 2px solid var(--border-color); 
-            padding: 4px;
-            border-radius: 8px;
-        }
-        
-        .cell {
-            background-color: #161b22;
-            border: 1px solid #21262d;
-            width: 60px;
-            height: 60px;
+        select {
+            padding: 10px 15px;
             border-radius: 6px;
+            border: 1px solid var(--border-main);
+            background: #0d1117;
+            color: white;
+            min-width: 300px;
+            font-size: 14px;
+            outline: none;
+        }
+        select:focus { border-color: var(--border-active); }
+
+        button {
+            padding: 10px 18px;
+            border-radius: 6px;
+            border: 1px solid rgba(255,255,255,0.1);
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: white;
+        }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        button:not(:disabled):hover { filter: brightness(1.2); }
+
+        .btn-load { background: #8957e5; }
+        .btn-reset { background: #21262d; color: #c9d1d9; }
+        .btn-calc { background: var(--lvl3); color: black; }
+        .btn-download { background: var(--success); }
+
+        /* --- СЕТКА (Точная копия картинки) --- */
+        .grid-wrapper {
+            display: flex;
+            justify-content: center;
+            padding: 20px;
+            background: #0d1117;
+            border-radius: 8px;
+            border: 1px solid var(--border-main);
+            overflow-x: auto;
+        }
+
+        .grid {
+            display: grid;
+            /* 6 групп по 3 колонки */
+            grid-template-columns: repeat(6, auto); 
+            gap: 15px; /* Отступ между группами */
+            padding: 10px;
+            border: 2px dashed var(--lvl2); /* Зеленая рамка как на картинке */
+        }
+
+        .group {
+            display: grid;
+            /* Внутри группы 3 колонки */
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2px; /* Маленький отступ между ячейками внутри группы */
+            border: 1px solid rgba(255,255,255,0.05);
+            padding: 2px;
+            background: rgba(255,255,255,0.02);
+        }
+
+        .cell {
+            width: 55px;
+            height: 60px; /* Прямоугольники */
+            background: var(--bg-cell);
+            border: 1px solid #000;
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
             user-select: none;
-            position: relative;
-            font-size: 16px;
+            font-size: 15px;
             font-weight: 600;
             color: #484f58;
-            transition: all 0.15s ease;
-            overflow: hidden;
+            position: relative;
+            transition: 0.1s;
         }
 
-        .cell:hover { 
-            background-color: #21262d; 
-            border-color: #444c56;
-            transform: scale(1.05);
-            z-index: 2;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-        }
+        .cell:hover { background: #30363d; }
+        .cell:active { transform: scale(0.95); }
 
-        /* Уровни */
-        .cell.level-1 { background-color: rgba(59, 130, 246, 0.2); border-color: var(--accent-blue); color: var(--accent-blue); }
-        .cell.level-2 { background-color: rgba(16, 185, 129, 0.2); border-color: var(--accent-green); color: var(--accent-green); }
-        .cell.level-3 { background-color: rgba(245, 158, 11, 0.2); border-color: var(--accent-yellow); color: var(--accent-yellow); }
-        
-        /* Заполненные ячейки (когда есть данные) */
-        .cell.filled {
-            color: white;
-            background-color: #21262d;
-            border-color: #444c56;
-        }
+        /* Заполненные ячейки */
+        .cell.filled { color: white; }
+        .cell.level-1 { background: rgba(59, 130, 246, 0.3); border-color: var(--lvl1); }
+        .cell.level-2 { background: rgba(16, 185, 129, 0.3); border-color: var(--lvl2); }
+        .cell.level-3 { background: rgba(245, 158, 11, 0.3); border-color: var(--lvl3); }
 
         .cell-num {
-            position: absolute; top: 4px; left: 6px; font-size: 10px; font-weight: 500; opacity: 0.4;
+            position: absolute; top: 2px; left: 4px; font-size: 9px; opacity: 0.4; font-weight: 400;
         }
 
-        /* --- Таблица результатов --- */
-        #results-view { 
-            display: none; 
-            margin-top: 24px; 
-            background: var(--panel-bg); 
-            border-radius: 12px; 
-            border: 1px solid var(--border-color);
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
-            overflow: hidden;
+        /* --- ТАБЛИЦА РАСЧЕТА --- */
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
         }
-        
-        .results-header {
-            padding: 16px 20px;
-            border-bottom: 1px solid var(--border-color);
-            background: #161b22;
+        .results-table th, .results-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-main);
+            font-size: 14px;
+        }
+        .results-table th {
+            background: #0d1117;
+            color: var(--text-muted);
             font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 10px;
+            text-transform: uppercase;
+            font-size: 12px;
         }
+        .results-table tr:hover td { background: rgba(255,255,255,0.02); }
 
-        table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 12px 20px; text-align: left; border-bottom: 1px solid var(--border-color); font-size: 14px; }
-        th { background: #1a1d24; color: var(--text-muted); font-weight: 500; text-transform: uppercase; font-size: 12px; letter-spacing: 0.5px; }
-        tr:last-child td { border-bottom: none; }
-        tr:hover td { background: #1c2128; }
-
-        /* Индикатор уровня в таблице */
-        .level-indicator {
+        .badge {
             display: inline-block;
             padding: 4px 8px;
             border-radius: 4px;
             font-size: 12px;
             font-weight: 600;
         }
-        .level-indicator.l1 { background: rgba(59, 130, 246, 0.2); color: var(--accent-blue); }
-        .level-indicator.l2 { background: rgba(16, 185, 129, 0.2); color: var(--accent-green); }
-        .level-indicator.l3 { background: rgba(245, 158, 11, 0.2); color: var(--accent-yellow); }
+        .badge-1 { background: rgba(59, 130, 246, 0.2); color: var(--lvl1); }
+        .badge-2 { background: rgba(16, 185, 129, 0.2); color: var(--lvl2); }
+        .badge-3 { background: rgba(245, 158, 11, 0.2); color: var(--lvl3); }
 
-        /* Статус бар */
         .status-bar {
-            margin-top: 16px;
+            margin-top: 15px;
             font-size: 13px;
             color: var(--text-muted);
-            display: flex;
-            gap: 20px;
+            text-align: center;
         }
     </style>
 </head>
 <body>
 
-    <div class="app-container">
-        <!-- Заголовок -->
-        <div class="header">
-            <i class="fa-solid fa-layer-group"></i>
-            <h1>Распределение нагрузки</h1>
-        </div>
+<div class="app">
+    <!-- Вкладки -->
+    <div class="tabs">
+        <div class="tab active" onclick="switchTab('distribution', this)">📦 Распределение</div>
+        <div class="tab" onclick="switchTab('calculation', this)">📊 Расчёт по квадрату</div>
+    </div>
 
-        <!-- Панель управления -->
-        <div class="control-panel">
+    <!-- Вкладка 1: Распределение -->
+    <div id="tab-distribution" class="tab-content active">
+        <div class="controls">
+            <!-- Кнопка загрузки (демо) -->
+            <button class="btn-load" onclick="loadDemoData()">📂 Загрузить демо-данные</button>
             
-            <!-- Кнопка загрузки (заменена на демо для теста) -->
-            <button class="btn btn-upload" onclick="loadDemoData()">
-                <i class="fa-solid fa-file-excel"></i> Загрузить демо-данные
-            </button>
-            
-            <!-- (Этот блок вернется, когда вы подключите Excel) -->
             <!-- 
-            <div class="file-upload-wrapper">
-                <button class="btn btn-upload"><i class="fa-solid fa-upload"></i> Загрузить Excel</button>
-                <input type="file" id="excel-file" accept=".xlsx, .xls, .csv" onchange="handleFileUpload(this)">
-            </div>
+            Для реального Excel:
+            <input type="file" id="excel-file" accept=".xlsx, .xls" onchange="handleFileUpload(this)" style="display:none;">
+            <button class="btn-load" onclick="document.getElementById('excel-file').click()">📂 Загрузить Excel</button>
             -->
 
-            <div class="control-group">
-                <label for="ks-select"><i class="fa-solid fa-location-dot"></i> КС:</label>
-                <select id="ks-select" disabled>
-                    <option value="">-- Сначала загрузите файл --</option>
-                </select>
-            </div>
+            <select id="ks-select" disabled>
+                <option value="">-- Сначала загрузите данные --</option>
+            </select>
 
-            <div style="flex-grow: 1;"></div> <!-- Распорка -->
+            <div style="flex-grow: 1;"></div>
 
-            <button class="btn btn-reset" onclick="resetLevels()" disabled id="btn-reset">
-                <i class="fa-solid fa-rotate-left"></i> Сбросить
-            </button>
-            <button class="btn btn-calc" onclick="calculateLoad()" disabled id="btn-calc">
-                <i class="fa-solid fa-calculator"></i> Пересчитать
-            </button>
-            <button class="btn btn-view" onclick="toggleView()" disabled id="btn-view">
-                <i class="fa-solid fa-table-list"></i> Посмотреть расчёт
-            </button>
-            <button class="btn btn-download" onclick="downloadExcel()" disabled id="btn-download">
-                <i class="fa-solid fa-download"></i> Скачать
-            </button>
+            <button class="btn-reset" onclick="resetLevels()" disabled id="btn-reset">Сбросить</button>
+            <button class="btn-calc" onclick="calculateLoad()" disabled id="btn-calc">⚙️ Пересчитать</button>
+            <button class="btn-download" onclick="downloadExcel()" disabled id="btn-download">💾 Скачать</button>
         </div>
 
-        <!-- Сетка -->
         <div class="grid-wrapper">
-            <div id="grid-view" class="grid-container">
+            <div class="grid" id="grid-view">
                 <!-- Генерируется скриптом -->
             </div>
         </div>
+        
+        <div class="status-bar" id="status-text">Система готова. Загрузите данные.</div>
+    </div>
 
-        <!-- Результаты -->
-        <div id="results-view">
-            <div class="results-header">
-                <i class="fa-solid fa-chart-simple"></i> Результат расчёта по КС
-            </div>
-            <table id="results-table">
+    <!-- Вкладка 2: Расчёт по квадрату -->
+    <div id="tab-calculation" class="tab-content">
+        <h3 style="margin-bottom: 20px; font-weight: 500;">Результаты распределения по КС</h3>
+        <div style="overflow-x: auto;">
+            <table class="results-table" id="results-table">
                 <thead>
                     <tr>
                         <th>КС (Адрес)</th>
-                        <th>Ячейки</th>
+                        <th>Ячейки (Номера)</th>
                         <th>Всего коробок</th>
                         <th>Приоритет</th>
                     </tr>
                 </thead>
-                <tbody></tbody>
+                <tbody>
+                    <tr><td colspan="4" style="text-align:center; color: #666;">Нет данных для отображения. Перейдите на вкладку "Распределение", заполните сетку и нажмите "Пересчитать".</td></tr>
+                </tbody>
             </table>
         </div>
-
-        <div class="status-bar">
-            <span id="status-text">Система готова к работе</span>
+        <div style="margin-top: 20px;">
+            <button class="btn-download" onclick="downloadExcel()" id="btn-download-2">💾 Скачать отчёт</button>
         </div>
     </div>
+</div>
 
-    <script>
-        // --- ДАННЫЕ ДЛЯ ДЕМО (имитация загрузки Excel) ---
-        const demoData = {
-            "МСК Новоданиловская набережная 12": [36, 36, 36],
-            "деревня Авдотьино Овражная Улица 4": [42, 42],
-            "МСК Проспект Куприна 11к2": [54, 54],
-            "деревня Грабченки Деревня Грабченки 206": [54, 54],
-            "МСК Большая Черемушкинская Улица 2ас1": [64, 64],
-            "село Сосновка Школьная Улица 23": [67, 67],
-            "МСК Квартал № 160 1вк3": [73, 73],
-            "поселок городского типа Михнево Библиотечная Улица 20": [75, 75],
-            "деревня Проводы Дорожная Улица 1а": [76, 76],
-            "Ступино улица Маяковского 21к1": [83, 83],
-            "деревня Журавна Деревня Журавна 60": [85, 85]
-        };
+<script>
+    // --- ДАННЫЕ ---
+    const demoData = {
+        "МСК Новоданиловская набережная 12": [36, 36, 36],
+        "деревня Авдотьино Овражная Улица 4": [42, 42],
+        "МСК Проспект Куприна 11к2": [54, 54],
+        "деревня Грабченки Деревня Грабченки 206": [54, 54],
+        "МСК Большая Черемушкинская Улица 2ас1": [64, 64],
+        "село Сосновка Школьная Улица 23": [67, 67],
+        "МСК Квартал № 160 1вк3": [73, 73],
+        "поселок городского типа Михнево Библиотечная Улица 20": [75, 75],
+        "деревня Проводы Дорожная Улица 1а": [76, 76],
+        "Ступино улица Маяковского 21к1": [83, 83],
+        "деревня Журавна Деревня Журавна 60": [85, 85]
+    };
 
-        let ksData = {}; 
-        let cellData = {}; 
-        let calculatedResults = [];
+    let ksData = {}; 
+    let cellData = {}; 
+    let calculatedResults = [];
 
-        // --- ИНИЦИАЛИЗАЦИЯ ---
+    // --- ВКЛАДКИ ---
+    function switchTab(tabId, element) {
+        // Убираем активный класс у всех вкладок и контента
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
         
-        function init() {
-            // Рисуем пустую сетку при старте
-            const gridContainer = document.getElementById('grid-view');
-            gridContainer.innerHTML = '';
-            for (let col = 0; col < 18; col++) {
+        // Добавляем активный класс нажатой вкладке и соответствующему контенту
+        element.classList.add('active');
+        document.getElementById(`tab-${tabId}`).classList.add('active');
+    }
+
+    // --- ИНИЦИАЛИЗАЦИЯ СЕТКИ ---
+    function init() {
+        const gridContainer = document.getElementById('grid-view');
+        gridContainer.innerHTML = '';
+
+        // Генерация структуры: 6 групп по 3 колонки
+        // Логика нумерации: сверху вниз (1, 2, 3), затем следующая колонка (4, 5, 6) и т.д.
+        let cellCounter = 1;
+
+        for (let groupIndex = 0; groupIndex < 6; groupIndex++) {
+            const groupDiv = document.createElement('div');
+            groupDiv.className = 'group';
+
+            // Внутри группы 3 колонки
+            for (let col = 0; col < 3; col++) {
+                // Идем по строкам (их 3)
                 for (let row = 0; row < 3; row++) {
-                    const num = (col * 3) + row + 1; 
-                    const div = document.createElement('div');
-                    div.className = 'cell';
-                    div.id = `cell-${num}`;
-                    div.dataset.num = num;
-                    div.innerHTML = `<span class="cell-num">${num}</span><span class="val-display"></span>`;
-                    div.onclick = () => handleCellClick(num);
-                    gridContainer.appendChild(div);
+                    const num = cellCounter; // Номер ячейки 1..54
+                    
+                    const cellDiv = document.createElement('div');
+                    cellDiv.className = 'cell';
+                    cellDiv.id = `cell-${num}`;
+                    cellDiv.dataset.num = num;
+                    cellDiv.innerHTML = `<span class="cell-num">${num}</span><span class="val-display"></span>`;
+                    cellDiv.onclick = () => handleCellClick(num);
+                    
+                    groupDiv.appendChild(cellDiv);
                     
                     if (!cellData[num]) {
                         cellData[num] = { ks: null, level: 0, baseVal: 0 };
                     }
+                    cellCounter++;
                 }
             }
+            gridContainer.appendChild(groupDiv);
         }
+        renderGrid();
+    }
 
-        // --- ЗАГРУЗКА ДАННЫХ (ДЕМО) ---
-        
-        function loadDemoData() {
-            ksData = demoData;
-            document.getElementById('status-text').textContent = "Демо-данные успешно загружены.";
-            document.getElementById('status-text').style.color = 'var(--accent-green)';
-            enableControls();
-            populateDropdown();
-        }
+    // --- ЛОГИКА ДАННЫХ ---
 
-        // (Реальная функция загрузки Excel - раскомментируйте, когда подключите библиотеку)
-        /*
-        function handleFileUpload(input) {
-            const file = input.files[0];
-            if (!file) return;
+    function loadDemoData() {
+        ksData = demoData;
+        updateStatus("Демо-данные загружены.", "var(--lvl2)");
+        enableControls();
+        populateDropdown();
+    }
 
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, {type: 'array'});
-                const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-                const jsonData = XLSX.utils.sheet_to_json(worksheet);
-                processData(jsonData);
-            };
-            reader.readAsArrayBuffer(file);
-        }
-
-        function processData(rows) {
+    // Реальная загрузка Excel (раскомментировать при подключении библиотеки)
+    /*
+    function handleFileUpload(input) {
+        const file = input.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, {type: 'array'});
+            const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+            const jsonData = XLSX.utils.sheet_to_json(worksheet);
+            
             ksData = {};
             let foundRows = 0;
-            rows.forEach(row => {
+            jsonData.forEach(row => {
                 const address = row['Value.place_name'];
                 if (address) {
                     if (!ksData[address]) ksData[address] = [];
-                    ksData[address].push(36); // Заглушка для кол-ва
+                    ksData[address].push(Number(row['data.Количество']) || 0); // Берем кол-во
                     foundRows++;
                 }
             });
+            
             if (foundRows > 0) {
-                document.getElementById('status-text').textContent = `Загружено строк: ${foundRows}`;
+                updateStatus(`Загружено строк: ${foundRows}`, "var(--lvl2)");
                 enableControls();
                 populateDropdown();
             } else {
-                alert('Ошибка: Не найдена колонка "Value.place_name"');
+                updateStatus("Ошибка: Не найдена колонка 'Value.place_name'", "var(--danger)");
             }
-        }
-        */
+        };
+        reader.readAsArrayBuffer(file);
+    }
+    */
 
-        function enableControls() {
-            document.getElementById('ks-select').disabled = false;
-            document.getElementById('btn-reset').disabled = false;
-            document.getElementById('btn-calc').disabled = false;
-            document.getElementById('btn-view').disabled = false;
-            document.getElementById('btn-download').disabled = false;
-        }
+    function enableControls() {
+        document.getElementById('ks-select').disabled = false;
+        document.getElementById('btn-reset').disabled = false;
+        document.getElementById('btn-calc').disabled = false;
+        document.getElementById('btn-download').disabled = false;
+        document.getElementById('btn-download-2').disabled = false;
+    }
 
-        // --- ЛОГИКА СЕТКИ И СПИСКА ---
+    function populateDropdown() {
+        const select = document.getElementById('ks-select');
+        select.innerHTML = '<option value="">-- Выберите адрес --</option>';
+        Object.keys(ksData).forEach(address => {
+            const option = document.createElement('option');
+            option.value = address;
+            option.textContent = address;
+            select.appendChild(option);
+        });
+    }
 
-        function populateDropdown() {
-            const select = document.getElementById('ks-select');
-            select.innerHTML = '<option value="">-- Выберите адрес --</option>';
-            Object.keys(ksData).forEach(address => {
-                const option = document.createElement('option');
-                option.value = address;
-                option.textContent = address;
-                select.appendChild(option);
-            });
-        }
+    function handleCellClick(num) {
+        const select = document.getElementById('ks-select');
+        const selectedKs = select.value;
 
-        function handleCellClick(num) {
-            const select = document.getElementById('ks-select');
-            const selectedKs = select.value;
-
-            if (!selectedKs) {
-                // Визуальная подсказка, если не выбран КС
-                select.style.borderColor = 'var(--accent-red)';
-                setTimeout(() => select.style.borderColor = '', 1000);
-                return;
-            }
-
-            if (cellData[num].ks !== selectedKs) {
-                cellData[num].ks = selectedKs;
-                const availableValues = ksData[selectedKs];
-                let usedCount = 0;
-                for(let i=1; i<=54; i++) { if(cellData[i].ks === selectedKs) usedCount++; }
-                const valIndex = Math.min(usedCount, availableValues.length - 1);
-                cellData[num].baseVal = availableValues[valIndex] || 0;
-                cellData[num].level = 1; 
-            } else {
-                cellData[num].level++;
-                if (cellData[num].level > 3) {
-                    cellData[num].ks = null;
-                    cellData[num].level = 0;
-                    cellData[num].baseVal = 0;
-                }
-            }
-            renderGrid();
+        if (!selectedKs) {
+            select.style.borderColor = 'var(--danger)';
+            setTimeout(() => select.style.borderColor = '', 800);
+            updateStatus("Сначала выберите КС из списка!", "var(--danger)");
+            return;
         }
 
-        function renderGrid() {
-            for (let i = 1; i <= 54; i++) {
-                const el = document.getElementById(`cell-${i}`);
-                const data = cellData[i];
-                if(!el) continue;
-                
-                el.className = 'cell';
-                const valDisplay = el.querySelector('.val-display');
-                
-                if (data.ks) {
-                    el.classList.add('filled');
-                    el.classList.add(`level-${data.level}`);
-                    valDisplay.textContent = data.baseVal; 
-                    el.title = `${data.ks}\nУровень: ${data.level}\nКол-во: ${data.baseVal}`;
-                } else {
-                    valDisplay.textContent = '';
-                    el.title = 'Пусто';
-                }
-            }
-        }
-
-        // --- РАСЧЕТ ---
-
-        function calculateLoad() {
-            const groups = {};
-            for (let i = 1; i <= 54; i++) {
-                const data = cellData[i];
-                if (!data.ks) continue; 
-
-                if (!groups[data.ks]) {
-                    groups[data.ks] = { name: data.ks, totalBoxes: 0, maxLevel: 0, cells: [] };
-                }
-                groups[data.ks].totalBoxes += data.baseVal;
-                if (data.level > groups[data.ks].maxLevel) groups[data.ks].maxLevel = data.level;
-                groups[data.ks].cells.push(i);
-            }
-
-            calculatedResults = Object.values(groups).sort((a, b) => b.maxLevel - a.maxLevel);
+        if (cellData[num].ks !== selectedKs) {
+            cellData[num].ks = selectedKs;
+            const availableValues = ksData[selectedKs];
             
-            // Визуальный отклик
-            const btn = document.getElementById('btn-calc');
-            const originalText = btn.innerHTML;
-            btn.innerHTML = '<i class="fa-solid fa-check"></i> Готово!';
-            btn.style.backgroundColor = 'var(--accent-green)';
-            btn.style.color = 'white';
-            setTimeout(() => {
-                btn.innerHTML = originalText;
-                btn.style.backgroundColor = '';
-                btn.style.color = '';
-            }, 1500);
-
-            document.getElementById('status-text').textContent = "Нагрузка пересчитана. Нажмите 'Посмотреть расчёт'.";
-        }
-
-        // --- ПРОСМОТР И СКАЧИВАНИЕ ---
-
-        function toggleView() {
-            const view = document.getElementById('results-view');
-            const tbody = document.querySelector('#results-table tbody');
+            // Считаем, сколько ячеек уже занято этим КС
+            let usedCount = 0;
+            for(let i=1; i<=54; i++) { if(cellData[i].ks === selectedKs) usedCount++; }
             
-            if (view.style.display === 'none' || view.style.display === '') {
-                tbody.innerHTML = '';
-                if(calculatedResults.length === 0) { 
-                    document.getElementById('status-text').textContent = "Сначала нажмите 'Пересчитать'.";
-                    return; 
-                }
+            // Берем значение из массива (если закончились, берем последнее или 0)
+            const valIndex = Math.min(usedCount, availableValues.length - 1);
+            cellData[num].baseVal = availableValues[valIndex] || 0;
+            cellData[num].level = 1; 
+        } else {
+            // Циклическое переключение уровня: 1 -> 2 -> 3 -> Сброс
+            cellData[num].level++;
+            if (cellData[num].level > 3) {
+                cellData[num].ks = null;
+                cellData[num].level = 0;
+                cellData[num].baseVal = 0;
+            }
+        }
+        renderGrid();
+    }
 
-                calculatedResults.forEach(row => {
-                    const tr = document.createElement('tr');
-                    row.cells.sort((a,b) => a-b);
-                    
-                    let levelHtml = '-';
-                    if (row.maxLevel > 0) levelHtml = `<span class="level-indicator l${row.maxLevel}">Уровень ${row.maxLevel}</span>`;
-
-                    tr.innerHTML = `
-                        <td><strong>${row.name}</strong></td>
-                        <td>${row.cells.join(', ')}</td>
-                        <td><strong>${row.totalBoxes}</strong></td>
-                        <td>${levelHtml}</td>
-                    `;
-                    tbody.appendChild(tr);
-                });
-                view.style.display = 'block';
-                view.scrollIntoView({ behavior: 'smooth' });
+    function renderGrid() {
+        for (let i = 1; i <= 54; i++) {
+            const el = document.getElementById(`cell-${i}`);
+            const data = cellData[i];
+            if(!el) continue;
+            
+            el.className = 'cell';
+            const valDisplay = el.querySelector('.val-display');
+            
+            if (data.ks) {
+                el.classList.add('filled');
+                el.classList.add(`level-${data.level}`);
+                valDisplay.textContent = data.baseVal; 
+                el.title = `${data.ks}\nУровень: ${data.level}\nКол-во: ${data.baseVal}`;
             } else {
-                view.style.display = 'none';
+                valDisplay.textContent = '';
+                el.title = 'Пусто';
             }
         }
+    }
 
-        function resetLevels() {
-            if(!confirm("Очистить всю сетку?")) return;
-            for (let i = 1; i <= 54; i++) {
-                cellData[i] = { ks: null, level: 0, baseVal: 0 };
+    // --- РАСЧЕТ ---
+
+    function calculateLoad() {
+        const groups = {};
+        for (let i = 1; i <= 54; i++) {
+            const data = cellData[i];
+            if (!data.ks) continue; 
+
+            if (!groups[data.ks]) {
+                groups[data.ks] = { name: data.ks, totalBoxes: 0, maxLevel: 0, cells: [] };
             }
-            renderGrid();
-            document.getElementById('results-view').style.display = 'none';
-            document.getElementById('status-text').textContent = "Сетка очищена.";
+            groups[data.ks].totalBoxes += data.baseVal;
+            if (data.level > groups[data.ks].maxLevel) groups[data.ks].maxLevel = data.level;
+            groups[data.ks].cells.push(i);
         }
 
-        function downloadExcel() {
-            if (calculatedResults.length === 0) {
-                document.getElementById('status-text').textContent = "Нет данных для скачивания. Сначала нажмите 'Пересчитать'.";
-                return;
-            }
+        calculatedResults = Object.values(groups).sort((a, b) => b.maxLevel - a.maxLevel);
+        
+        // Обновляем таблицу
+        renderResultsTable();
+        
+        // Визуальный отклик
+        const btn = document.getElementById('btn-calc');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '✅ Готово!';
+        btn.style.backgroundColor = 'var(--lvl2)';
+        setTimeout(() => {
+            btn.innerHTML = originalText;
+            btn.style.backgroundColor = '';
+        }, 1500);
 
-            let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; 
-            csvContent += "КС;Ячейки;Всего коробок;Уровень\n";
+        updateStatus("Нагрузка пересчитана. Перейдите на вкладку 'Расчёт по квадрату'.", "var(--lvl2)");
+    }
 
-            calculatedResults.forEach(row => {
-                csvContent += `${row.name};${row.cells.join(' ')};${row.totalBoxes};${row.maxLevel}\n`;
-            });
+    function renderResultsTable() {
+        const tbody = document.querySelector('#results-table tbody');
+        tbody.innerHTML = '';
 
-            const encodedUri = encodeURI(csvContent);
-            const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", "raschet_ks.csv");
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            document.getElementById('status-text').textContent = "Файл скачан.";
+        if (calculatedResults.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color: #666;">Нет данных. Заполните сетку.</td></tr>';
+            return;
         }
 
-        // Запуск
-        init();
+        calculatedResults.forEach(row => {
+            const tr = document.createElement('tr');
+            row.cells.sort((a,b) => a-b);
+            
+            let levelHtml = '-';
+            if (row.maxLevel > 0) {
+                levelHtml = `<span class="badge badge-${row.maxLevel}">Уровень ${row.maxLevel}</span>`;
+            }
 
-    </script>
+            tr.innerHTML = `
+                <td><strong>${row.name}</strong></td>
+                <td>${row.cells.join(', ')}</td>
+                <td><strong>${row.totalBoxes}</strong></td>
+                <td>${levelHtml}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    // --- СБРОС И СКАЧИВАНИЕ ---
+
+    function resetLevels() {
+        if(!confirm("Очистить всю сетку?")) return;
+        for (let i = 1; i <= 54; i++) {
+            cellData[i] = { ks: null, level: 0, baseVal: 0 };
+        }
+        renderGrid();
+        calculatedResults = [];
+        renderResultsTable();
+        updateStatus("Сетка очищена.", "var(--text-muted)");
+    }
+
+    function downloadExcel() {
+        if (calculatedResults.length === 0) {
+            updateStatus("Нет данных для скачивания. Сначала нажмите 'Пересчитать'.", "var(--danger)");
+            return;
+        }
+
+        // Формируем CSV (открывается в Excel)
+        let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; 
+        csvContent += "КС;Ячейки;Всего коробок;Уровень\n";
+
+        calculatedResults.forEach(row => {
+            csvContent += `${row.name};${row.cells.join(' ')};${row.totalBoxes};${row.maxLevel}\n`;
+        });
+
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", "raschet_ks.csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        updateStatus("Файл скачан.", "var(--lvl2)");
+    }
+
+    function updateStatus(text, color) {
+        const el = document.getElementById('status-text');
+        el.textContent = text;
+        el.style.color = color || 'var(--text-muted)';
+    }
+
+    // Запуск приложения
+    init();
+
+</script>
 </body>
 </html>

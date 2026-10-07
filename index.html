@@ -1,356 +1,367 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Распределение нагрузки по КС</title>
-    <!-- Подключение современной библиотеки SheetJS -->
-    <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-    <style>
-        :root {
-            --primary: #4F46E5;
-            --primary-hover: #4338CA;
-            --success: #10B981;
-            --danger: #EF4444;
-            --warning: #F59E0B;
-            --bg-main: #F9FAFB;
-            --bg-card: #FFFFFF;
-            --text-main: #1F2937;
-            --text-muted: #6B7280;
-            --border: #E5E7EB;
-            --radius: 12px;
-            --transition: all 0.25s ease;
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-        }
-
-        body {
-            background-color: var(--bg-main);
-            color: var(--text-main);
-            padding: 40px 20px;
-            display: flex;
-            justify-content: center;
-        }
-
-        .container {
-            width: 100%;
-            max-width: 1000px;
-            background: var(--bg-card);
-            border-radius: var(--radius);
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-            border: 1px solid var(--border);
-            overflow: hidden;
-        }
-
-        /* Шапка */
-        .header {
-            padding: 24px 32px;
-            background: linear-gradient(135deg, #4F46E5 0%, #3730A3 100%);
-            color: white;
-        }
-
-        .header h1 {
-            font-size: 24px;
-            font-weight: 700;
-            margin-bottom: 4px;
-        }
-
-        .header p {
-            font-size: 14px;
-            opacity: 0.9;
-        }
-
-        /* Вкладки навигации */
-        .tabs {
-            display: flex;
-            background: #F3F4F6;
-            border-bottom: 1px solid var(--border);
-            padding: 0 16px;
-        }
-
-        .tab-btn {
-            background: none;
-            border: none;
-            padding: 16px 24px;
-            font-size: 15px;
-            font-weight: 500;
-            color: var(--text-muted);
-            cursor: pointer;
-            position: relative;
-            transition: var(--transition);
-        }
-
-        .tab-btn:hover {
-            color: var(--text-main);
-        }
-
-        .tab-btn.active {
-            color: var(--primary);
-        }
-
-        .tab-btn.active::after {
-            content: '';
-            position: absolute;
-            bottom: -1px;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: var(--primary);
-            border-radius: 3px 3px 0 0;
-        }
-
-        /* Контент вкладок */
-        .tab-content {
-            padding: 32px;
-            display: none;
-        }
-
-        .tab-content.active {
-            display: block;
-        }
-
-        /* Зона загрузки файлов Drag and Drop */
-        .dropzone-container {
-            margin-bottom: 24px;
-        }
-
-        .dropzone {
-            border: 2px dashed #D1D5DB;
-            background: #FAFBFC;
-            border-radius: var(--radius);
-            padding: 40px 20px;
-            text-align: center;
-            cursor: pointer;
-            transition: var(--transition);
-            position: relative;
-        }
-
-        .dropzone:hover, .dropzone.dragover {
-            border-color: var(--primary);
-            background: #EEF2FF;
-        }
-
-        .dropzone-icon {
-            font-size: 40px;
-            margin-bottom: 12px;
-            color: var(--text-muted);
-            display: inline-block;
-        }
-
-        .dropzone-text {
-            font-size: 15px;
-            font-weight: 500;
-            color: var(--text-main);
-            margin-bottom: 4px;
-        }
-
-        .dropzone-hint {
-            font-size: 13px;
-            color: var(--text-muted);
-        }
-
-        /* Скрытый инпут */
-        #file-input {
-            display: none;
-        }
-
-        /* Панель сведений о файле */
-        .file-info-badge {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            background: #F0FDF4;
-            border: 1px solid #BBF7D0;
-            padding: 12px 20px;
-            border-radius: 8px;
-            margin-top: 12px;
-            display: none;
-        }
-
-        .file-info-text {
-            font-size: 14px;
-            color: #166534;
-            font-weight: 500;
-        }
-
-        .remove-file-btn {
-            background: none;
-            border: none;
-            color: var(--danger);
-            font-weight: 600;
-            cursor: pointer;
-            font-size: 13px;
-        }
-
-        /* Панель инструментов (Кнопки действий) */
-        .toolbar {
-            display: flex;
-            gap: 12px;
-            flex-wrap: wrap;
-            margin-bottom: 32px;
-            align-items: center;
-        }
-
-        .btn {
-            padding: 10px 20px;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: var(--transition);
-            border: 1px solid transparent;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .btn-primary {
-            background: var(--primary);
-            color: white;
-        }
-
-        .btn-primary:hover:not(:disabled) {
-            background: var(--primary-hover);
-        }
-
-        .btn-secondary {
-            background: white;
-            border-color: var(--border);
-            color: var(--text-main);
-        }
-
-        .btn-secondary:hover:not(:disabled) {
-            background: #F3F4F6;
-            border-color: #D1D5DB;
-        }
-
-        .btn:disabled {
-            background: #E5E7EB;
-            color: #9CA3AF;
-            border-color: #E5E7EB;
-            cursor: not-allowed;
-        }
-
-        /* Индикатор системного статуса */
-        .status-banner {
-            padding: 12px 16px;
-            border-radius: 8px;
-            font-size: 14px;
-            margin-bottom: 24px;
-            border: 1px solid transparent;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .status-ready {
-            background: #EFF6FF;
-            border-color: #BFDBFE;
-            color: #1E40AF;
-        }
-
-        .status-error {
-            background: #FEF2F2;
-            border-color: #FEE2E2;
-            color: #991B1B;
-        }
-
-        /* Стилизация интерактивной таблицы */
-        .table-container {
-            width: 100%;
-            overflow-x: auto;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            text-align: left;
-            font-size: 14px;
-        }
-
-        th {
-            background: #F9FAFB;
-            padding: 14px 16px;
-            font-weight: 600;
-            color: var(--text-main);
-            border-bottom: 2px solid var(--border);
-        }
-
-        td {
-            padding: 14px 16px;
-            border-bottom: 1px solid var(--border);
-            color: #374151;
-        }
-
-        tr:last-child td {
-            border-bottom: none;
-        }
-
-        tr:hover td {
-            background: #F8FAFC;
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 48px 16px;
-            color: var(--text-muted);
-        }
-
-        .empty-state-icon {
-            font-size: 32px;
-            margin-bottom: 8px;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Склад: Распределение нагрузки</title>
+  <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+  <style>
+    :root {
+      --bg: #0f1115;
+      --card: #1a1d24;
+      --accent: #4f46e5;
+      --accent-hover: #4338ca;
+      --text: #e5e7eb;
+      --text-muted: #9ca3af;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --level-low: #3b82f6;
+      --level-mid: #f59e0b;
+      --level-high: #ef4444;
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, system-ui, -apple-system, sans-serif;
+      margin: 0;
+      padding: 16px;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    header {
+      margin-bottom: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    h1 { margin: 0; font-size: 24px; }
+    .controls {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    button {
+      padding: 10px 16px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+    .btn-primary {
+      background: var(--accent);
+      color: white;
+    }
+    .btn-primary:hover { background: var(--accent-hover); transform: translateY(-1px); }
+    .btn-secondary {
+      background: transparent;
+      border: 1px solid #374151;
+      color: var(--text);
+    }
+    .btn-secondary:hover { border-color: var(--text-muted); }
+    .drop-zone {
+      border: 2px dashed #374151;
+      border-radius: 12px;
+      padding: 32px;
+      text-align: center;
+      background: var(--card);
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .drop-zone:hover { border-color: var(--accent); color: var(--text); }
+    .drop-zone.dragover { background: rgba(79, 70, 229, 0.1); border-color: var(--accent); }
+    .grid-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+      gap: 4px;
+      margin-top: 24px;
+      max-height: 600px;
+      overflow: auto;
+    }
+    .cell {
+      aspect-ratio: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      position: relative;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    }
+    .cell:hover { transform: scale(1.05); z-index: 10; }
+    .cell.level-1 { background: rgba(59, 130, 246, 0.3); color: white; }
+    .cell.level-2 { background: rgba(245, 158, 11, 0.3); color: #1f2937; }
+    .cell.level-3 { background: rgba(239, 68, 68, 0.3); color: white; }
+    .cell.empty { background: transparent; border: 1px dashed #374151; }
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: #1f2937;
+      color: white;
+      padding: 12px 16px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      transform: translateX(150%);
+      transition: transform 0.3s ease;
+      z-index: 100;
+    }
+    .toast.show { transform: translateX(0); }
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.6);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    .modal-overlay.active { display: flex; }
+    .modal {
+      background: var(--card);
+      padding: 24px;
+      border-radius: 12px;
+      width: 90%;
+      max-width: 500px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+    }
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; margin-bottom: 6px; color: var(--text-muted); }
+    .slider-container {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .slider-value { width: 50px; text-align: center; }
+    .preview-box {
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      display: inline-block;
+      margin-left: 8px;
+    }
+    .preview-low { background: var(--level-low); }
+    .preview-mid { background: var(--level-mid); }
+    .preview-high { background: var(--level-high); }
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      margin-top: 20px;
+    }
+  </style>
 </head>
 <body>
+  <div class="container">
+    <header>
+      <h1>Распределение нагрузки: ПДК3.12</h1>
+      <div class="controls">
+        <button class="btn-secondary" onclick="toggleModal()">Настройки уровней</button>
+        <button class="btn-primary" onclick="exportXLSX()">Экспорт в Excel</button>
+      </div>
+    </header>
 
-<div class="container">
-    <!-- Верхняя панель -->
-    <div class="header">
-        <h1>Распределение нагрузки по КС</h1>
-        <p>Интеллектуальная система автоматизации логистической сетки и расчета по квадратам</p>
+    <div id="drop-zone" class="drop-zone" onclick="document.getElementById('file-input').click()">
+      <p>Перетащите Excel-файл сюда или нажмите для выбора</p>
+      <input type="file" id="file-input" accept=".xlsx,.xls" style="display:none" onchange="handleFile(this)" />
     </div>
 
-    <!-- Вкладки меню -->
-    <div class="tabs">
-        <button class="tab-btn active" onclick="switchTab('distribution')">📦 Распределение</button>
-        <button class="tab-btn" onclick="switchTab('calculation')">📊 Расчёт по квадрату</button>
+    <div class="grid-container" id="grid"></div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="toast">Файл загружен и обработан!</div>
+
+  <!-- Modal -->
+  <div class="modal-overlay" id="levels-modal">
+    <div class="modal">
+      <h2 style="margin-top:0">Настройка уровней нагрузки</h2>
+      <p style="color:var(--text-muted); margin-bottom:20px;">Задайте пороги для автоматического распределения по цветам.</p>
+      <div class="form-group">
+        <label>Низкий уровень (синий) до:</label>
+        <div class="slider-container">
+          <input type="range" id="low-threshold" min="0" max="5000" value="500" oninput="updatePreview('low', this.value)" />
+          <input type="number" id="low-value" class="slider-value" value="500" oninput="syncSliders('low', this.value)" />
+          <div class="preview-box preview-low"></div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Средний уровень (жёлтый) до:</label>
+        <div class="slider-container">
+          <input type="range" id="mid-threshold" min="0" max="5000" value="1500" oninput="updatePreview('mid', this.value)" />
+          <input type="number" id="mid-value" class="slider-value" value="1500" oninput="syncSliders('mid', this.value)" />
+          <div class="preview-box preview-mid"></div>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-secondary" onclick="closeModal()">Отмена</button>
+        <button class="btn-primary" onclick="applyLevels()">Применить и раскрасить</button>
+      </div>
     </div>
+  </div>
 
-    <!-- Контент: Вкладка "Распределение" -->
-    <div id="distribution" class="tab-content active">
-        
-        <!-- Компонент загрузки файлов -->
-        <div class="dropzone-container">
-            <div class="dropzone" id="dropzone" onclick="document.getElementById('file-input').click()">
-                <div class="dropzone-icon">📥</div>
-                <div class="dropzone-text" id="dropzone-text">Нажмите для выбора файла или перетащите его сюда</div>
-                <div class="dropzone-hint">Поддерживаются форматы .xlsx, .xls, .csv</div>
-                <input type="file" id="file-input" accept=".xlsx, .xls, .csv">
-            </div>
-            
-            <div class="file-info-badge" id="file-info-badge">
-                <span class="file-info-text" id="file-name-display">📝 файл_данных.xlsx успешно импортирован</span>
-                <button class="remove-file-btn" onclick="clearFile(event)">Удалить файл</button>
-            </div>
-        </div>
+  <script>
+    let gridData = ;
+    let headersMap = {};
 
-        <!-- Системный статус-бар -->
-        <div class="status-banner status-ready" id="status-banner">
-            ⚙️ Система готова. Пожалуйста, загрузите рабочий файл Excel для начала анализа.
-        </div>
+    // Загрузка файла
+    function handleFile(input) {
+      const file = input.files;
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = e => {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, {type: 'array'});
+        const firstSheetName = workbook.SheetNames;
+        const worksheet = workbook.Sheets[firstSheetName];
+        const json = XLSX.utils.sheet_to_json(worksheet, {header: 1});
+        processExcelData(json);
+      };
+      reader.readAsArrayBuffer(file);
+    }
 
-        <!-- Панель управления действиями -->
-        <div class="toolbar">
-            <button class="btn btn-primary" id="btn-recalc" disabled onclick="handleRecalculate()">🔄 Пересчитать</button>
-            <button class="btn btn-secondary" id="btn-download" disabled onclick="handleDownload()">💾 Скачать отчёт</button>
-            <button class="btn btn-secondary" id="btn-reset" onclick="handleReset()">🧹 Сбросить настройки</button>
-        </div>
+    // Обработка данных
+    function processExcelData(json) {
+      // Ищем колонки: адрес, количество, место
+      const headers = json || ;
+      headersMap = {};
+      headers.forEach((h, i) => {
+        const key = String(h).toLowerCase().trim();
+        if (key.includes('адрес') || key.includes('место') || key.includes('place')) headersMap.place = i;
+        if (key.includes('кол') || key.includes('qty') || key.includes('количество')) headersMap.qty = i;
+      });
 
+      // Парсим строки
+      const dataRows = json.slice(1).filter(r => r.length > 1);
+      gridData = dataRows.map(row => {
+        const qty = parseFloat(row[headersMap.qty] || 0);
+        const place = String(row[headersMap.place] || '—');
+        return { qty, place, level: 0 };
+      });
+
+      renderGrid();
+      showToast('Файл загружен и обработан!');
+      closeModal();
+    }
+
+    // Отрисовка сетки
+    function renderGrid() {
+      const container = document.getElementById('grid');
+      container.innerHTML = '';
+      gridData.forEach((cell, idx) => {
+        const el = document.createElement('div');
+        el.className = `cell \${cell.level ? 'level-' + cell.level : 'empty'}`;
+        el.textContent = cell.qty || '0';
+        el.title = cell.place;
+        el.onclick = () => toggleLevel(idx);
+        container.appendChild(el);
+      });
+    }
+
+    // Переключение уровня по клику
+    function toggleLevel(idx) {
+      const cell = gridData[idx];
+      cell.level = (cell.level % 3) + 1; // 1→2→3→0
+      renderGrid();
+    }
+
+    // Модальное окно
+    function toggleModal() {
+      const modal = document.getElementById('levels-modal');
+      modal.classList.toggle('active');
+    }
+    function closeModal() {
+      document.getElementById('levels-modal').classList.remove('active');
+    }
+
+    // Синхронизация слайдеров и инпутов
+    function syncSliders(type, value) {
+      const num = document.getElementById(type + '-value');
+      const slider = document.getElementById(type + '-threshold');
+      const val = Math.max(0, Math.min(5000, parseInt(value) || 0));
+      num.value = val;
+      slider.value = val;
+    }
+    function updatePreview(type, value) {
+      syncSliders(type, value);
+    }
+
+    // Применение уровней
+    function applyLevels() {
+      const low = parseInt(document.getElementById('low-value').value) || 500;
+      const mid = parseInt(document.getElementById('mid-value').value) || 1500;
+
+      gridData.forEach(cell => {
+        if (cell.qty <= low) cell.level = 1;
+        else if (cell.qty <= mid) cell.level = 2;
+        else cell.level = 3;
+      });
+
+      // Сохраняем в localStorage
+      localStorage.setItem('load-levels', JSON.stringify({ low, mid }));
+      renderGrid();
+      showToast('Уровни применены!');
+      closeModal();
+    }
+
+    // Экспорт в XLSX
+    function exportXLSX() {
+      const wsData = [['Место', 'Количество', 'Уровень']];
+      gridData.forEach(c => wsData.push([c.place, c.qty, c.level]));
+      const ws = XLSX.utils.aoa_to_sheet(wsData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Распределение');
+      XLSX.writeFile(wb, 'distribution.xlsx');
+    }
+
+    // Toast
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      toast.textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+
+    // Drag-and-drop
+    const dropZone = document.getElementById('drop-zone');
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+      dropZone.addEventListener(eventName, preventDefaults, false);
+    });
+    function preventDefaults(e) { e.preventDefault(); e.stopPropagation(); }
+    ['dragenter', 'dragover'].forEach(eventName => {
+      dropZone.addEventListener(eventName, () => dropZone.classList.add('dragover'), false);
+    });
+    ['dragleave', 'drop'].forEach(eventName => {
+      dropZone.addEventListener(eventName, () => dropZone.classList.remove('dragover'), false);
+    });
+    dropZone.addEventListener('drop', handleDrop, false);
+    function handleDrop(e) {
+      const dt = e.dataTransfer;
+      const files = dt.files;
+      if (files.length > 0) document.getElementById('file-input').files = files;
+      handleFile(document.getElementById('file-input'));
+    }
+
+    // Загрузка сохранённых уровней при старте
+    window.addEventListener('DOMContentLoaded', () => {
+      const saved = localStorage.getItem('load-levels');
+      if (saved) {
+        const levels = JSON.parse(saved);
+        document.getElementById('low-value').value = levels.low;
+        document.getElementById('low-threshold').value = levels.low;
+        document.getElementById('mid-value').value = levels.mid;
+        document.getElementById('mid-threshold').value = levels.mid;
+      }
+    });
+  </script>
+</body>
+</html>

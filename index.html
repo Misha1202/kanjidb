@@ -4,575 +4,353 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Распределение нагрузки по КС</title>
-    
-    <!-- 
-    ВАРИАНТ 1 (Рекомендуемый): Локальный файл.
-    Скачайте xlsx.full.min.js и положите рядом с index.html
-    -->
-    <script src="xlsx.full.min.js"></script>
-
-    <!-- 
-    ВАРИАНТ 2 (Если не хотите скачивать): 
-    Закомментируйте строку выше и раскомментируйте эту.
-    -->
-    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script> -->
-
+    <!-- Подключение современной библиотеки SheetJS -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
     <style>
         :root {
-            --bg-body: #0d1117;
-            --bg-panel: #161b22;
-            --bg-cell: #21262d;
-            --border-main: #30363d;
-            --border-active: #58a6ff;
-            --text-main: #c9d1d9;
-            --text-muted: #8b949e;
-            
-            --lvl1: #3b82f6;
-            --lvl2: #10b981;
-            --lvl3: #f59e0b;
-            --danger: #ef4444;
-            --success: #238636;
+            --primary: #4F46E5;
+            --primary-hover: #4338CA;
+            --success: #10B981;
+            --danger: #EF4444;
+            --warning: #F59E0B;
+            --bg-main: #F9FAFB;
+            --bg-card: #FFFFFF;
+            --text-main: #1F2937;
+            --text-muted: #6B7280;
+            --border: #E5E7EB;
+            --radius: 12px;
+            --transition: all 0.25s ease;
         }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--bg-body);
+            background-color: var(--bg-main);
             color: var(--text-main);
-            padding: 20px;
+            padding: 40px 20px;
             display: flex;
             justify-content: center;
         }
 
-        .app {
+        .container {
             width: 100%;
-            max-width: 1200px;
-            background: var(--bg-panel);
-            border: 1px solid var(--border-main);
-            border-radius: 8px;
+            max-width: 1000px;
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            border: 1px solid var(--border);
             overflow: hidden;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }
 
-        /* --- Вкладки --- */
+        /* Шапка */
+        .header {
+            padding: 24px 32px;
+            background: linear-gradient(135deg, #4F46E5 0%, #3730A3 100%);
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        /* Вкладки навигации */
         .tabs {
             display: flex;
-            background: #0d1117;
-            border-bottom: 1px solid var(--border-main);
+            background: #F3F4F6;
+            border-bottom: 1px solid var(--border);
+            padding: 0 16px;
         }
 
-        .tab {
-            padding: 15px 25px;
-            cursor: pointer;
-            font-weight: 600;
-            color: var(--text-muted);
-            border-bottom: 2px solid transparent;
-            transition: all 0.2s;
-            user-select: none;
-        }
-
-        .tab:hover { color: var(--text-main); background: rgba(255,255,255,0.05); }
-        .tab.active {
-            color: white;
-            border-bottom-color: var(--lvl1);
-            background: var(--bg-panel);
-        }
-
-        /* --- Контент вкладок --- */
-        .tab-content {
-            display: none;
-            padding: 20px;
-        }
-        .tab-content.active { display: block; }
-
-        /* --- Панель управления --- */
-        .controls {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 15px;
-            align-items: center;
-            margin-bottom: 25px;
-            padding-bottom: 20px;
-            border-bottom: 1px solid var(--border-main);
-        }
-
-        select {
-            padding: 10px 15px;
-            border-radius: 6px;
-            border: 1px solid var(--border-main);
-            background: #0d1117;
-            color: white;
-            min-width: 300px;
-            font-size: 14px;
-            outline: none;
-        }
-        select:focus { border-color: var(--border-active); }
-
-        button {
-            padding: 10px 18px;
-            border-radius: 6px;
-            border: 1px solid rgba(255,255,255,0.1);
-            font-weight: 600;
-            font-size: 14px;
-            cursor: pointer;
-            transition: 0.2s;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            color: white;
-        }
-        button:disabled { opacity: 0.5; cursor: not-allowed; }
-        button:not(:disabled):hover { filter: brightness(1.2); }
-
-        .btn-load { background: #8957e5; }
-        .btn-reset { background: #21262d; color: #c9d1d9; }
-        .btn-calc { background: var(--lvl3); color: black; }
-        .btn-download { background: var(--success); }
-
-        /* --- СЕТКА --- */
-        .grid-wrapper {
-            display: flex;
-            justify-content: center;
-            padding: 20px;
-            background: #0d1117;
-            border-radius: 8px;
-            border: 1px solid var(--border-main);
-            overflow-x: auto;
-        }
-
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(6, auto); 
-            gap: 15px; 
-            padding: 10px;
-            border: 2px dashed var(--lvl2); 
-        }
-
-        .group {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 2px; 
-            border: 1px solid rgba(255,255,255,0.05);
-            padding: 2px;
-            background: rgba(255,255,255,0.02);
-        }
-
-        .cell {
-            width: 55px;
-            height: 60px; 
-            background: var(--bg-cell);
-            border: 1px solid #000;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            user-select: none;
+        .tab-btn {
+            background: none;
+            border: none;
+            padding: 16px 24px;
             font-size: 15px;
-            font-weight: 600;
-            color: #484f58;
-            position: relative;
-            transition: 0.1s;
-        }
-
-        .cell:hover { background: #30363d; }
-        .cell:active { transform: scale(0.95); }
-
-        .cell.filled { color: white; }
-        .cell.level-1 { background: rgba(59, 130, 246, 0.3); border-color: var(--lvl1); }
-        .cell.level-2 { background: rgba(16, 185, 129, 0.3); border-color: var(--lvl2); }
-        .cell.level-3 { background: rgba(245, 158, 11, 0.3); border-color: var(--lvl3); }
-
-        .cell-num {
-            position: absolute; top: 2px; left: 4px; font-size: 9px; opacity: 0.4; font-weight: 400;
-        }
-
-        /* --- ТАБЛИЦА РАСЧЕТА --- */
-        .results-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 10px;
-        }
-        .results-table th, .results-table td {
-            padding: 12px 15px;
-            text-align: left;
-            border-bottom: 1px solid var(--border-main);
-            font-size: 14px;
-        }
-        .results-table th {
-            background: #0d1117;
+            font-weight: 500;
             color: var(--text-muted);
-            font-weight: 600;
-            text-transform: uppercase;
-            font-size: 12px;
+            cursor: pointer;
+            position: relative;
+            transition: var(--transition);
         }
-        .results-table tr:hover td { background: rgba(255,255,255,0.02); }
 
-        .badge {
+        .tab-btn:hover {
+            color: var(--text-main);
+        }
+
+        .tab-btn.active {
+            color: var(--primary);
+        }
+
+        .tab-btn.active::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--primary);
+            border-radius: 3px 3px 0 0;
+        }
+
+        /* Контент вкладок */
+        .tab-content {
+            padding: 32px;
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Зона загрузки файлов Drag and Drop */
+        .dropzone-container {
+            margin-bottom: 24px;
+        }
+
+        .dropzone {
+            border: 2px dashed #D1D5DB;
+            background: #FAFBFC;
+            border-radius: var(--radius);
+            padding: 40px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: var(--transition);
+            position: relative;
+        }
+
+        .dropzone:hover, .dropzone.dragover {
+            border-color: var(--primary);
+            background: #EEF2FF;
+        }
+
+        .dropzone-icon {
+            font-size: 40px;
+            margin-bottom: 12px;
+            color: var(--text-muted);
             display: inline-block;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 12px;
-            font-weight: 600;
         }
-        .badge-1 { background: rgba(59, 130, 246, 0.2); color: var(--lvl1); }
-        .badge-2 { background: rgba(16, 185, 129, 0.2); color: var(--lvl2); }
-        .badge-3 { background: rgba(245, 158, 11, 0.2); color: var(--lvl3); }
 
-        .status-bar {
-            margin-top: 15px;
+        .dropzone-text {
+            font-size: 15px;
+            font-weight: 500;
+            color: var(--text-main);
+            margin-bottom: 4px;
+        }
+
+        .dropzone-hint {
             font-size: 13px;
             color: var(--text-muted);
+        }
+
+        /* Скрытый инпут */
+        #file-input {
+            display: none;
+        }
+
+        /* Панель сведений о файле */
+        .file-info-badge {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #F0FDF4;
+            border: 1px solid #BBF7D0;
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-top: 12px;
+            display: none;
+        }
+
+        .file-info-text {
+            font-size: 14px;
+            color: #166534;
+            font-weight: 500;
+        }
+
+        .remove-file-btn {
+            background: none;
+            border: none;
+            color: var(--danger);
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        /* Панель инструментов (Кнопки действий) */
+        .toolbar {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 32px;
+            align-items: center;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+            border: 1px solid transparent;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: var(--primary-hover);
+        }
+
+        .btn-secondary {
+            background: white;
+            border-color: var(--border);
+            color: var(--text-main);
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: #F3F4F6;
+            border-color: #D1D5DB;
+        }
+
+        .btn:disabled {
+            background: #E5E7EB;
+            color: #9CA3AF;
+            border-color: #E5E7EB;
+            cursor: not-allowed;
+        }
+
+        /* Индикатор системного статуса */
+        .status-banner {
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            margin-bottom: 24px;
+            border: 1px solid transparent;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-ready {
+            background: #EFF6FF;
+            border-color: #BFDBFE;
+            color: #1E40AF;
+        }
+
+        .status-error {
+            background: #FEF2F2;
+            border-color: #FEE2E2;
+            color: #991B1B;
+        }
+
+        /* Стилизация интерактивной таблицы */
+        .table-container {
+            width: 100%;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 14px;
+        }
+
+        th {
+            background: #F9FAFB;
+            padding: 14px 16px;
+            font-weight: 600;
+            color: var(--text-main);
+            border-bottom: 2px solid var(--border);
+        }
+
+        td {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border);
+            color: #374151;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background: #F8FAFC;
+        }
+
+        .empty-state {
             text-align: center;
+            padding: 48px 16px;
+            color: var(--text-muted);
+        }
+
+        .empty-state-icon {
+            font-size: 32px;
+            margin-bottom: 8px;
         }
     </style>
 </head>
 <body>
 
-<div class="app">
-    <!-- Вкладки -->
-    <div class="tabs">
-        <div class="tab active" onclick="switchTab('distribution', this)">📦 Распределение</div>
-        <div class="tab" onclick="switchTab('calculation', this)">📊 Расчёт по квадрату</div>
+<div class="container">
+    <!-- Верхняя панель -->
+    <div class="header">
+        <h1>Распределение нагрузки по КС</h1>
+        <p>Интеллектуальная система автоматизации логистической сетки и расчета по квадратам</p>
     </div>
 
-    <!-- Вкладка 1: Распределение -->
-    <div id="tab-distribution" class="tab-content active">
-        <div class="controls">
-            <!-- Кнопка загрузки Excel -->
-            <input type="file" id="excel-file" accept=".xlsx, .xls" onchange="handleFileUpload(this)" style="display:none;">
-            <button class="btn-load" onclick="document.getElementById('excel-file').click()">📂 Загрузить Excel</button>
+    <!-- Вкладки меню -->
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('distribution')">📦 Распределение</button>
+        <button class="tab-btn" onclick="switchTab('calculation')">📊 Расчёт по квадрату</button>
+    </div>
 
-            <select id="ks-select" disabled>
-                <option value="">-- Сначала загрузите файл --</option>
-            </select>
-
-            <div style="flex-grow: 1;"></div>
-
-            <button class="btn-reset" onclick="resetLevels()" disabled id="btn-reset">Сбросить</button>
-            <button class="btn-calc" onclick="calculateLoad()" disabled id="btn-calc">⚙️ Пересчитать</button>
-            <button class="btn-download" onclick="downloadExcel()" disabled id="btn-download">💾 Скачать</button>
-        </div>
-
-        <div class="grid-wrapper">
-            <div class="grid" id="grid-view">
-                <!-- Генерируется скриптом -->
+    <!-- Контент: Вкладка "Распределение" -->
+    <div id="distribution" class="tab-content active">
+        
+        <!-- Компонент загрузки файлов -->
+        <div class="dropzone-container">
+            <div class="dropzone" id="dropzone" onclick="document.getElementById('file-input').click()">
+                <div class="dropzone-icon">📥</div>
+                <div class="dropzone-text" id="dropzone-text">Нажмите для выбора файла или перетащите его сюда</div>
+                <div class="dropzone-hint">Поддерживаются форматы .xlsx, .xls, .csv</div>
+                <input type="file" id="file-input" accept=".xlsx, .xls, .csv">
+            </div>
+            
+            <div class="file-info-badge" id="file-info-badge">
+                <span class="file-info-text" id="file-name-display">📝 файл_данных.xlsx успешно импортирован</span>
+                <button class="remove-file-btn" onclick="clearFile(event)">Удалить файл</button>
             </div>
         </div>
-        
-        <div class="status-bar" id="status-text">Система готова. Загрузите Excel-файл.</div>
-    </div>
 
-    <!-- Вкладка 2: Расчёт по квадрату -->
-    <div id="tab-calculation" class="tab-content">
-        <h3 style="margin-bottom: 20px; font-weight: 500;">Результаты распределения по КС</h3>
-        <div style="overflow-x: auto;">
-            <table class="results-table" id="results-table">
-                <thead>
-                    <tr>
-                        <th>КС (Адрес)</th>
-                        <th>Ячейки (Номера)</th>
-                        <th>Всего коробок</th>
-                        <th>Приоритет</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr><td colspan="4" style="text-align:center; color: #666;">Нет данных для отображения. Перейдите на вкладку "Распределение", заполните сетку и нажмите "Пересчитать".</td></tr>
-                </tbody>
-            </table>
+        <!-- Системный статус-бар -->
+        <div class="status-banner status-ready" id="status-banner">
+            ⚙️ Система готова. Пожалуйста, загрузите рабочий файл Excel для начала анализа.
         </div>
-        <div style="margin-top: 20px;">
-            <button class="btn-download" onclick="downloadExcel()" id="btn-download-2">💾 Скачать отчёт</button>
+
+        <!-- Панель управления действиями -->
+        <div class="toolbar">
+            <button class="btn btn-primary" id="btn-recalc" disabled onclick="handleRecalculate()">🔄 Пересчитать</button>
+            <button class="btn btn-secondary" id="btn-download" disabled onclick="handleDownload()">💾 Скачать отчёт</button>
+            <button class="btn btn-secondary" id="btn-reset" onclick="handleReset()">🧹 Сбросить настройки</button>
         </div>
-    </div>
-</div>
 
-<script>
-    // --- ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ---
-    let ksData = {}; // Данные из Excel: { "Адрес КС": [кол-во1, кол-во2, ...] }
-    let cellData = {}; // Состояние ячеек
-    let calculatedResults = [];
-
-    // --- ВКЛАДКИ ---
-    function switchTab(tabId, element) {
-        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-        
-        element.classList.add('active');
-        document.getElementById(`tab-${tabId}`).classList.add('active');
-    }
-
-    // --- ИНИЦИАЛИЗАЦИЯ СЕТКИ ---
-    function init() {
-        const gridContainer = document.getElementById('grid-view');
-        gridContainer.innerHTML = '';
-
-        let cellCounter = 1;
-
-        for (let groupIndex = 0; groupIndex < 6; groupIndex++) {
-            const groupDiv = document.createElement('div');
-            groupDiv.className = 'group';
-
-            for (let col = 0; col < 3; col++) {
-                for (let row = 0; row < 3; row++) {
-                    const num = cellCounter;
-                    
-                    const cellDiv = document.createElement('div');
-                    cellDiv.className = 'cell';
-                    cellDiv.id = `cell-${num}`;
-                    cellDiv.dataset.num = num;
-                    cellDiv.innerHTML = `<span class="cell-num">${num}</span><span class="val-display"></span>`;
-                    cellDiv.onclick = () => handleCellClick(num);
-                    
-                    groupDiv.appendChild(cellDiv);
-                    
-                    if (!cellData[num]) {
-                        cellData[num] = { ks: null, level: 0, baseVal: 0 };
-                    }
-                    cellCounter++;
-                }
-            }
-            gridContainer.appendChild(groupDiv);
-        }
-        renderGrid();
-    }
-
-    // --- ЗАГРУЗКА EXCEL ---
-    function handleFileUpload(input) {
-        const file = input.files[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-
-        reader.onload = function(e) {
-            try {
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, {type: 'array'});
-                
-                const firstSheetName = workbook.SheetNames[0];
-                const worksheet = workbook.Sheets[firstSheetName];
-                const jsonData = XLSX.utils.sheet_to_json(worksheet);
-                
-                processData(jsonData);
-            } catch (err) {
-                console.error(err);
-                updateStatus("Ошибка чтения файла. Проверьте формат.", "var(--danger)");
-            }
-        };
-
-        reader.readAsArrayBuffer(file);
-    }
-
-    function processData(rows) {
-        ksData = {};
-        let foundRows = 0;
-        
-        // Ищем колонку с количеством (гибкий поиск)
-        let quantityColumn = null;
-        if (rows.length > 0) {
-            const keys = Object.keys(rows[0]);
-            quantityColumn = keys.find(k => k.toLowerCase().includes('количество') || k.toLowerCase().includes('кол-во'));
-            if (!quantityColumn && keys.length > 1) quantityColumn = keys[1];
-        }
-
-        rows.forEach(row => {
-            const address = row['Value.place_name'];
-            const qty = quantityColumn ? row[quantityColumn] : 0;
-
-            if (address) {
-                if (!ksData[address]) {
-                    ksData[address] = [];
-                }
-                ksData[address].push(Number(qty) || 0);
-                foundRows++;
-            }
-        });
-
-        if (foundRows > 0) {
-            updateStatus(`Успешно загружено строк: ${foundRows}`, "var(--lvl2)");
-            enableControls();
-            populateDropdown();
-        } else {
-            updateStatus("Ошибка: Не найдена колонка 'Value.place_name'", "var(--danger)");
-        }
-    }
-
-    function enableControls() {
-        document.getElementById('ks-select').disabled = false;
-        document.getElementById('btn-reset').disabled = false;
-        document.getElementById('btn-calc').disabled = false;
-        document.getElementById('btn-download').disabled = false;
-        document.getElementById('btn-download-2').disabled = false;
-    }
-
-    function populateDropdown() {
-        const select = document.getElementById('ks-select');
-        select.innerHTML = '<option value="">-- Выберите адрес --</option>';
-        Object.keys(ksData).forEach(address => {
-            const option = document.createElement('option');
-            option.value = address;
-            option.textContent = address;
-            select.appendChild(option);
-        });
-    }
-
-    // --- ЛОГИКА СЕТКИ ---
-    function handleCellClick(num) {
-        const select = document.getElementById('ks-select');
-        const selectedKs = select.value;
-
-        if (!selectedKs) {
-            select.style.borderColor = 'var(--danger)';
-            setTimeout(() => select.style.borderColor = '', 800);
-            updateStatus("Сначала выберите КС из списка!", "var(--danger)");
-            return;
-        }
-
-        if (cellData[num].ks !== selectedKs) {
-            cellData[num].ks = selectedKs;
-            const availableValues = ksData[selectedKs];
-            
-            let usedCount = 0;
-            for(let i=1; i<=54; i++) { if(cellData[i].ks === selectedKs) usedCount++; }
-            
-            const valIndex = Math.min(usedCount, availableValues.length - 1);
-            cellData[num].baseVal = availableValues[valIndex] || 0;
-            cellData[num].level = 1; 
-        } else {
-            cellData[num].level++;
-            if (cellData[num].level > 3) {
-                cellData[num].ks = null;
-                cellData[num].level = 0;
-                cellData[num].baseVal = 0;
-            }
-        }
-        renderGrid();
-    }
-
-    function renderGrid() {
-        for (let i = 1; i <= 54; i++) {
-            const el = document.getElementById(`cell-${i}`);
-            const data = cellData[i];
-            if(!el) continue;
-            
-            el.className = 'cell';
-            const valDisplay = el.querySelector('.val-display');
-            
-            if (data.ks) {
-                el.classList.add('filled');
-                el.classList.add(`level-${data.level}`);
-                valDisplay.textContent = data.baseVal; 
-                el.title = `${data.ks}\nУровень: ${data.level}\nКол-во: ${data.baseVal}`;
-            } else {
-                valDisplay.textContent = '';
-                el.title = 'Пусто';
-            }
-        }
-    }
-
-    // --- РАСЧЕТ ---
-    function calculateLoad() {
-        const groups = {};
-        for (let i = 1; i <= 54; i++) {
-            const data = cellData[i];
-            if (!data.ks) continue; 
-
-            if (!groups[data.ks]) {
-                groups[data.ks] = { name: data.ks, totalBoxes: 0, maxLevel: 0, cells: [] };
-            }
-            groups[data.ks].totalBoxes += data.baseVal;
-            if (data.level > groups[data.ks].maxLevel) groups[data.ks].maxLevel = data.level;
-            groups[data.ks].cells.push(i);
-        }
-
-        calculatedResults = Object.values(groups).sort((a, b) => b.maxLevel - a.maxLevel);
-        
-        renderResultsTable();
-        
-        const btn = document.getElementById('btn-calc');
-        const originalText = btn.innerHTML;
-        btn.innerHTML = '✅ Готово!';
-        btn.style.backgroundColor = 'var(--lvl2)';
-        setTimeout(() => {
-            btn.innerHTML = originalText;
-            btn.style.backgroundColor = '';
-        }, 1500);
-
-        updateStatus("Нагрузка пересчитана. Перейдите на вкладку 'Расчёт по квадрату'.", "var(--lvl2)");
-    }
-
-    function renderResultsTable() {
-        const tbody = document.querySelector('#results-table tbody');
-        tbody.innerHTML = '';
-
-        if (calculatedResults.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color: #666;">Нет данных. Заполните сетку.</td></tr>';
-            return;
-        }
-
-        calculatedResults.forEach(row => {
-            const tr = document.createElement('tr');
-            row.cells.sort((a,b) => a-b);
-            
-            let levelHtml = '-';
-            if (row.maxLevel > 0) {
-                levelHtml = `<span class="badge badge-${row.maxLevel}">Уровень ${row.maxLevel}</span>`;
-            }
-
-            tr.innerHTML = `
-                <td><strong>${row.name}</strong></td>
-                <td>${row.cells.join(', ')}</td>
-                <td><strong>${row.totalBoxes}</strong></td>
-                <td>${levelHtml}</td>
-            `;
-            tbody.appendChild(tr);
-        });
-    }
-
-    // --- СБРОС И СКАЧИВАНИЕ ---
-    function resetLevels() {
-        if(!confirm("Очистить всю сетку?")) return;
-        for (let i = 1; i <= 54; i++) {
-            cellData[i] = { ks: null, level: 0, baseVal: 0 };
-        }
-        renderGrid();
-        calculatedResults = [];
-        renderResultsTable();
-        updateStatus("Сетка очищена.", "var(--text-muted)");
-    }
-
-    function downloadExcel() {
-        if (calculatedResults.length === 0) {
-            updateStatus("Нет данных для скачивания. Сначала нажмите 'Пересчитать'.", "var(--danger)");
-            return;
-        }
-
-        let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; 
-        csvContent += "КС;Ячейки;Всего коробок;Уровень\n";
-
-        calculatedResults.forEach(row => {
-            csvContent += `${row.name};${row.cells.join(' ')};${row.totalBoxes};${row.maxLevel}\n`;
-        });
-
-        const encodedUri = encodeURI(csvContent);
-        const link = document.createElement("a");
-        link.setAttribute("href", encodedUri);
-        link.setAttribute("download", "raschet_ks.csv");
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        
-        updateStatus("Файл скачан.", "var(--lvl2)");
-    }
-
-    function updateStatus(text, color) {
-        const el = document.getElementById('status-text');
-        el.textContent = text;
-        el.style.color = color || 'var(--text-muted)';
-    }
-
-    // Запуск приложения
-    init();
-</script>
-</body>
-</html>

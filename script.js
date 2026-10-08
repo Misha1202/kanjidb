@@ -4,10 +4,13 @@
   var rows = [];               // сырые строки листа
   var headers = [];
   var data = [];               // {square, address, cell, qty} — исходные данные из файла
-  var layout = {};             // { square: [ {square, address, cell, origCell, qty, level} x N ] }
+  var layout = {};             // { square: [ {cell, level, square, address, qty, origCell, moved} x N ] }
   var levelMap = { 1: [], 2: [] };
   var sortKey = 'cell', sortDir = 1;
   var viewMode = 'was';        // 'was' | 'now'
+  var paintMode = 0;           // 0 — выкл, 1 — уровень 1, 2 — уровень 2
+  var totalCells = 54;
+  var cellRefs = [];           // [cell] по номеру-1 (cellRefs[i] соответствует ячейке i+1)
   var LEVEL_LOAD = { high: 'Ходовой', mid: 'Средний', low: 'Низкий' };
 
   /* ---------- XLSX ---------- */
@@ -36,32 +39,21 @@
   /* ---------- Утилиты ---------- */
   function msg(text, type){ var m = $('msg'); m.textContent = text || ''; m.className = text ? type : ''; }
   function esc(s){ return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
-  function parseCellInput(str, max){
-    var out = [];
-    String(str).split(/[,\s]+/).forEach(function(part){
-      if (!part) return;
-      var m = part.match(/^(\d+)\s*-\s*(\d+)$/);
-      if (m) {
-        var a = +m[1], b = +m[2];
-        if (a > b) { var t = a; a = b; b = t; }
-        for (var i = a; i <= b; i++) if (i >= 1 && i <= max) out.push(i);
-      } else {
-        var n = parseInt(part, 10);
-        if (n >= 1 && n <= max) out.push(n);
-      }
-    });
-    return Array.from(new Set(out)).sort(function(x,y){ return x-y; });
+  function cellsNeeded(maxCell){
+    // Кратно 9, минимум 6 групп (54 ячейки)
+    var groups = Math.max(6, Math.ceil((maxCell || 54) / 9));
+    return groups * 9;
   }
 
-  /* ---------- Сетка: динамическая, минимум 54 (6 групп по 9) ---------- */
-  var cellRefs = [];      // [cell] по порядку номеров 1..N
-  var totalCells = 54;    // может увеличиться, если офисов > 54
-
-  function buildGrid(n){
-    if (!n) n = 54;
-    // Округляем до кратного 9 (полный столбец 3×3)
-    var groups = Math.ceil(n / 9);
-    totalCells = groups * 9;
+  /* ---------- Сетка ----------
+     Нумерация сверху вниз: внутри группы идут столбцы по 3 ячейки.
+     Формула: num = group * 9 + col * 3 + row + 1
+     col — 0..2 (слева-направо), row — 0..2 (сверху-вниз)
+  */
+  function buildGrid(maxCell){
+    var total = cellsNeeded(maxCell);
+    totalCells = total;
+    var groups = total / 9;
 
     var grid = $('grid');
     grid.innerHTML = '';
@@ -70,23 +62,43 @@
     for (var g = 0; g < groups; g++) {
       var group = document.createElement('div');
       group.className = 'group';
-      var localCells = [];
       for (var col = 0; col < 3; col++) {
         for (var row = 0; row < 3; row++) {
-          var num = (g * 9) + (col * 3) + row + 1;
+          var num = g * 9 + col * 3 + row + 1;
           var c = document.createElement('div');
           c.className = 'cell empty';
           c.dataset.num = num;
           c.innerHTML = '<span class="n">' + num + '</span><div class="q">0</div><div class="a">Пусто</div><span class="mv"></span>';
+          c.addEventListener('click', onCellClick);
           group.appendChild(c);
-          localCells.push(c);
+          cellRefs[num - 1] = c;
         }
       }
       grid.appendChild(group);
-      cellRefs = cellRefs.concat(localCells);
     }
   }
-  buildGrid(54);
+
+  function onCellClick(e){
+    if (!paintMode) return;
+    var el = e.currentTarget;
+    var num = +el.dataset.num;
+    var cur = (levelMap[1].indexOf(num) !== -1) ? 1 : (levelMap[2].indexOf(num) !== -1 ? 2 : 0);
+
+    if (cur === paintMode) {
+      // снять уровень
+      levelMap[1] = levelMap[1].filter(function(n){ return n !== num; });
+      levelMap[2] = levelMap[2].filter(function(n){ return n !== num; });
+    } else {
+      // убрать из противоположного
+      if (paintMode === 1) levelMap[2] = levelMap[2].filter(function(n){ return n !== num; });
+      if (paintMode === 2) levelMap[1] = levelMap[1].filter(function(n){ return n !== num; });
+      // добавить
+      if (levelMap[paintMode].indexOf(num) === -1) levelMap[paintMode].push(num);
+      levelMap[paintMode].sort(function(a, b){ return a - b; });
+    }
+    rebuildLayout();
+    render();
+  }
 
   /* ---------- Загрузка ---------- */
   function handleFile(file){
@@ -158,7 +170,7 @@
       var ad = String(r[a] == null ? '' : r[a]).trim();
       var cn = parseInt(String(r[c] == null ? '' : r[c]).trim(), 10);
       if (!sq || !ad) continue;
-      if (!(cn >= 1)) continue; // ячейка должна быть >=1
+      if (!(cn >= 1)) continue;
       var n = parseFloat(String(r[q]).replace(/\s/g, '').replace(',', '.'));
       if (!isFinite(n)) n = 0;
 
@@ -169,7 +181,7 @@
     data = Object.keys(agg).map(function(k){ return agg[k]; });
     if (!data.length) { msg('Не найдено ни одной строки с адресом и ячейкой.', 'err'); return; }
 
-    // Максимальный номер ячейки — для расширения сетки
+    // Максимальный номер ячейки по всему файлу — для сетки
     var maxCell = 54;
     data.forEach(function(d){ if (d.cell > maxCell) maxCell = d.cell; });
     buildGrid(maxCell);
@@ -183,81 +195,52 @@
     $('app').style.display = 'block';
     $('btnRecalc').disabled = false;
     $('btnReset').disabled = false;
-    msg('Загружено: ' + data.length + ' строк, квадратов: ' + squares.length + '. Нажмите «Пересчитать».', 'ok');
+    msg('Загружено: ' + data.length + ' строк, квадратов: ' + squares.length + '. Разметьте уровни и нажмите «Пересчитать».', 'ok');
 
     levelMap = { 1: [], 2: [] };
-    layout = {};
     rebuildLayout();
     render();
   }
 
   /* ---------- Пересчёт ---------- */
-  function recalcFlow(){
-    var s1 = prompt(
-      'ШАГ 1/2 — Ячейки 1-го уровня (сюда попадут САМЫЕ СИЛЬНЫЕ офисы каждого квадрата).\n' +
-      'Формат: 1-5, 8, 12-14\n\n' +
-      'Оставьте пустым, если 1-й уровень не нужен.', '1-5');
-    if (s1 === null) return;
-    var l1 = s1.trim() ? parseCellInput(s1, 1e6) : [];
-
-    var s2 = prompt(
-      'ШАГ 2/2 — Ячейки 2-го уровня (сюда попадут САМЫЕ СЛАБЫЕ офисы каждого квадрата).\n' +
-      'Уже занято 1-м: ' + (l1.join(',') || '—') + '\n\n' +
-      'Оставьте пустым, если 2-й уровень не нужен.', '48-54');
-    if (s2 === null) return;
-    var l2 = s2.trim() ? parseCellInput(s2, 1e6).filter(function(n){ return l1.indexOf(n) === -1; }) : [];
-
-    if (!l1.length && !l2.length) { msg('Ни один уровень не назначен.', 'err'); return; }
-    levelMap = { 1: l1, 2: l2 };
+  function recalcAll(){
     rebuildLayout();
     render();
-    msg('Уровни: 1-й — ' + l1.length + ' яч., 2-й — ' + l2.length + ' яч.', 'ok');
+    msg('Пересчёт применён ко всем квадратам: 1-й ур. — ' + levelMap[1].length + ' яч., 2-й — ' + levelMap[2].length + ' яч.', 'ok');
     $('btnExportOne').disabled = false;
     $('btnExportAll').disabled = false;
   }
 
-  /* ---------- Основная логика перестановки ----------
-     Для каждого квадрата:
-     - Сортируем офисы по qty убыв.
-     - Сильные: топ-N по ячейкам 1-го уровня.
-     - Слабые: топ-M по ячейкам 2-го уровня из оставшихся.
-     - Остальные остаются на своих ячейках, но если их ячейку забрали —
-       они переезжают на освободившуюся (обмен местами).
-  */
+  /* ---------- Основная логика перестановки внутри одного квадрата ---------- */
   function applyLevelsToSquare(square){
     var list = data.filter(function(d){ return d.square === square; })
       .map(function(d){ return { square: d.square, address: d.address, origCell: d.cell, qty: d.qty }; });
-
     if (!list.length) return [];
 
-    // Сортировка по убыванию коробок (для сильных) — стабильная
+    // Сортировка по убыванию коробок (сильные сверху)
     var byQtyDesc = list.slice().sort(function(a, b){
       if (b.qty !== a.qty) return b.qty - a.qty;
       return a.address.localeCompare(b.address, 'ru');
     });
 
-    // Ячейки уровней
     var l1 = levelMap[1].slice();
     var l2 = levelMap[2].slice();
 
-    // Сформировать итоговую карту: cell -> office
-    // Стартуем с исходного размещения
     var placement = {};       // cell -> office
     list.forEach(function(d){ placement[d.origCell] = d; });
 
-    // Отмечаем, какие офисы уже переставлены
-    var used = {}; // address -> true
+    var used = {};
     var strongOffices = [];
     var weakOffices = [];
 
-    // Сильные: топ-N из byQtyDesc
+    // 1. Сильные: топ-N из byQtyDesc, N = размер 1-го уровня
     var strongCount = Math.min(l1.length, byQtyDesc.length);
     for (var i = 0; i < strongCount; i++) {
       strongOffices.push(byQtyDesc[i]);
       used[byQtyDesc[i].address] = true;
     }
 
-    // Слабые: топ-M из byQtyDesc по возрастанию qty, исключая уже взятых
+    // 2. Слабые: топ-M по возрастанию qty из оставшихся
     var rest = byQtyDesc.filter(function(d){ return !used[d.address]; })
       .slice()
       .sort(function(a, b){
@@ -270,38 +253,33 @@
       used[rest[j].address] = true;
     }
 
-    // Раскладка "сильные -> ячейки 1-го уровня"
-    // При этом тот офис, который сидел в этой ячейке, отправляется в origCell сильного.
+    // 3. Раскладываем сильных
     strongOffices.forEach(function(strong, idx){
       var targetCell = l1[idx];
-      var displaced = placement[targetCell];   // офис, сидевший в целевой ячейке
-      var strongOrigCell = strong.origCell;
+      var displaced = placement[targetCell];
+      var strongOrig = strong.origCell;
 
-      // Убираем displaced из его позиции (если он не тот же самый)
       if (displaced && displaced !== strong) {
-        // Переезжает на origCell сильного
         delete placement[targetCell];
-        placement[strongOrigCell] = displaced;
-        displaced.newCell = strongOrigCell;
+        placement[strongOrig] = displaced;
+        displaced.newCell = strongOrig;
       } else if (!displaced) {
-        // Ячейка была пустая
-        // Сильный уезжает со своего origCell
         delete placement[strong.origCell];
       }
       placement[targetCell] = strong;
       strong.newCell = targetCell;
     });
 
-    // Раскладка "слабые -> ячейки 2-го уровня"
+    // 4. Раскладываем слабых
     weakOffices.forEach(function(weak, idx){
       var targetCell = l2[idx];
       var displaced = placement[targetCell];
-      var weakOrigCell = weak.origCell;
+      var weakOrig = weak.origCell;
 
       if (displaced && displaced !== weak) {
         delete placement[targetCell];
-        placement[weakOrigCell] = displaced;
-        displaced.newCell = weakOrigCell;
+        placement[weakOrig] = displaced;
+        displaced.newCell = weakOrig;
       } else if (!displaced) {
         delete placement[weak.origCell];
       }
@@ -309,8 +287,7 @@
       weak.newCell = targetCell;
     });
 
-    // Собираем результат: каждой ячейке либо офис, либо пусто
-    // Возвращаем массив ячеек от 1 до N, где N = максимальная занятая ячейка
+    // 5. Собираем результат
     var maxCell = 54;
     Object.keys(placement).forEach(function(k){
       var n = +k;
@@ -322,12 +299,12 @@
     var result = [];
     for (var c = 1; c <= maxCell; c++) {
       var off = placement[c];
-      var level = 0;
-      if (l1.indexOf(c) !== -1) level = 1;
-      else if (l2.indexOf(c) !== -1) level = 2;
+      var lvl = 0;
+      if (l1.indexOf(c) !== -1) lvl = 1;
+      else if (l2.indexOf(c) !== -1) lvl = 2;
       result.push({
         cell: c,
-        level: level,
+        level: lvl,
         square: square,
         address: off ? off.address : null,
         qty: off ? off.qty : 0,
@@ -341,32 +318,33 @@
   function rebuildLayout(){
     layout = {};
     var squares = Array.from(new Set(data.map(function(d){ return d.square; })));
-    squares.forEach(function(sq){
-      layout[sq] = applyLevelsToSquare(sq);
-    });
+    squares.forEach(function(sq){ layout[sq] = applyLevelsToSquare(sq); });
   }
 
-  /* ---------- Отрисовка ---------- */
   function getLevel(cellNum){
     if (levelMap[1].indexOf(cellNum) !== -1) return 1;
     if (levelMap[2].indexOf(cellNum) !== -1) return 2;
     return 0;
   }
 
+  /* ---------- Отрисовка ---------- */
   function render(){
     var sq = $('sq').value;
     var cells = layout[sq] || [];
 
-    // Собираем мапу: cell -> { address, qty, level, moved, origCell }
+    // Определяем, сколько ячеек нужно нарисовать для этого квадрата
+    var maxCell = 54;
+    data.forEach(function(d){
+      if (d.square === sq && d.cell > maxCell) maxCell = d.cell;
+    });
+    var needed = cellsNeeded(maxCell);
+    if (needed !== totalCells) buildGrid(maxCell);
+
+    // Мапа cell -> office
     var byCell = {};
     cells.forEach(function(c){ byCell[c.cell] = c; });
 
-    // Определяем максимальный номер ячейки, чтобы расширить сетку при необходимости
-    var maxCell = totalCells;
-    cells.forEach(function(c){ if (c.cell > maxCell) maxCell = c.cell; });
-    if (maxCell > totalCells) buildGrid(maxCell);
-
-    // Цветовая шкала нагрузки: считаем максимум по всем офисам квадрата
+    // Цветовая шкала
     var maxQty = 1;
     cells.forEach(function(c){ if (c.qty > maxQty) maxQty = c.qty; });
     var tH = 0.7, tM = 0.3;
@@ -376,15 +354,17 @@
       if (!c) continue;
       var d = byCell[n];
 
-      // В режиме "Было" показываем origCell-позицию, т.е. офис, который изначально сидел в этой ячейке
+      // Режим "Было": показать офис на его исходной ячейке
       if (viewMode === 'was') {
-        // Найти офис, у которого origCell == n
         var wasOffice = null;
         cells.forEach(function(x){ if (x.origCell === n) wasOffice = x; });
         d = wasOffice ? { cell: n, level: 0, address: wasOffice.address, qty: wasOffice.qty, moved: false, origCell: n } : null;
       }
 
       c.className = 'cell';
+      if (paintMode === 1) c.classList.add('paint-1');
+      else if (paintMode === 2) c.classList.add('paint-2');
+
       var lvl = getLevel(n);
       if (lvl === 1) c.classList.add('lvl-1');
       else if (lvl === 2) c.classList.add('lvl-2');
@@ -395,7 +375,6 @@
         c.classList.add(load);
         c.querySelector('.q').textContent = d.qty;
         c.querySelector('.a').textContent = d.address;
-        // В режиме "Стало" показываем, откуда приехал офис
         if (viewMode === 'now' && d.moved) {
           c.querySelector('.mv').textContent = '← ' + d.origCell;
         } else {
@@ -424,15 +403,14 @@
     $('sSq').textContent = sq || '—';
     $('sCount').textContent = officesCount;
     $('sSum').textContent = Math.round(sum * 100) / 100;
-    $('sL1').textContent = l1Count;
-    $('sL2').textContent = l2Count;
+    $('sL1').textContent = levelMap[1].length;
+    $('sL2').textContent = levelMap[2].length;
 
     renderTable(cells);
   }
 
   function renderTable(cells){
     var term = $('q').value.trim().toLowerCase();
-    // В таблице всегда показываем актуальное ("Стало"), но добавляем столбец "Была"
     var view = cells.filter(function(c){ return c.address; })
       .filter(function(c){ return !term || c.address.toLowerCase().indexOf(term) !== -1; });
 
@@ -456,7 +434,7 @@
     }).join('') : '<tr><td colspan="5" style="color:var(--muted)">Ничего не найдено</td></tr>';
   }
 
-  /* ---------- Сброс уровней ---------- */
+  /* ---------- Сброс ---------- */
   function resetLevels(){
     levelMap = { 1: [], 2: [] };
     rebuildLayout();
@@ -482,14 +460,7 @@
     aoa.push(['Ячейка', 'Уровень', 'Была ячейка', 'Адрес ПВЗ', 'Коробок', 'Переезд']);
     offices.sort(function(a,b){ return a.cell - b.cell; });
     offices.forEach(function(c){
-      aoa.push([
-        c.cell,
-        c.level || '',
-        c.origCell,
-        c.address,
-        c.qty,
-        c.moved ? 'да' : ''
-      ]);
+      aoa.push([c.cell, c.level || '', c.origCell, c.address, c.qty, c.moved ? 'да' : '']);
     });
     return aoa;
   }
@@ -522,7 +493,6 @@
     var applyAll = (answer.trim() !== '2');
 
     var selected = $('sq').value;
-    // Сохраняем старый layout и строим новый по запросу
     var oldLayout = layout;
     var newLayout = {};
     var squares = Array.from(new Set(data.map(function(d){ return d.square; })));
@@ -531,19 +501,15 @@
       if (applyAll) {
         newLayout[sq] = applyLevelsToSquare(sq);
       } else {
-        if (sq === selected) {
-          newLayout[sq] = applyLevelsToSquare(sq);
-        } else {
-          // Квадрат без изменений: как в исходном файле
-          newLayout[sq] = oldLayout[sq] || [];
-        }
+        if (sq === selected) newLayout[sq] = applyLevelsToSquare(sq);
+        else newLayout[sq] = oldLayout[sq] || [];
       }
     });
 
     loadXLSX().then(function(){
       var wb = XLSX.utils.book_new();
 
-      // Лист 1: сводка
+      // Сводка
       var summary = [['Квадрат', 'Офисов', 'Коробок всего', 'Ячеек 1-го ур.', 'Ячеек 2-го ур.']];
       squares.forEach(function(sq){
         var cells = newLayout[sq] || [];
@@ -563,15 +529,13 @@
         var offices = cells.filter(function(c){ return c.address; });
         offices.sort(function(a,b){ return a.cell - b.cell; });
 
-        var aoa = [];
-        aoa.push(['Ячейка', 'Уровень', 'Была ячейка', 'Адрес ПВЗ', 'Коробок', 'Переезд']);
+        var aoa = [['Ячейка', 'Уровень', 'Была ячейка', 'Адрес ПВЗ', 'Коробок', 'Переезд']];
         offices.forEach(function(c){
           aoa.push([c.cell, c.level || '', c.origCell, c.address, c.qty, c.moved ? 'да' : '']);
         });
         var ws = XLSX.utils.aoa_to_sheet(aoa);
         ws['!cols'] = [{wch:10},{wch:10},{wch:12},{wch:50},{wch:10},{wch:10}];
         var name = String(sq).slice(0, 28).replace(/[\\\/\?\*\[\]:]/g, '_') || 'Лист';
-        // Гарантируем уникальность имени
         var base = name, k = 2;
         while (wb.SheetNames.indexOf(name) !== -1) { name = base + '_' + (k++); }
         XLSX.utils.book_append_sheet(wb, ws, name);
@@ -582,7 +546,6 @@
     }).catch(function(err){ msg(err.message, 'err'); });
   }
 
-  /* ---------- Шаблон ---------- */
   function downloadTemplate(){
     loadXLSX().then(function(){
       var ws = XLSX.utils.aoa_to_sheet([
@@ -619,7 +582,7 @@
   window.addEventListener('dragover', function(e){ e.preventDefault(); });
   window.addEventListener('drop', function(e){ e.preventDefault(); });
 
-  $('btnRecalc').addEventListener('click', recalcFlow);
+  $('btnRecalc').addEventListener('click', recalcAll);
   $('btnReset').addEventListener('click', resetLevels);
   $('btnExportOne').addEventListener('click', exportCurrent);
   $('btnExportAll').addEventListener('click', exportAll);
@@ -628,18 +591,24 @@
   $('q').addEventListener('input', function(){ renderTable(layout[$('sq').value] || []); });
   ['cAddr','cSq','cCell','cQty'].forEach(function(id){ $(id).addEventListener('change', applyMapping); });
 
-  // Переключатель "Было / Стало"
-  $('tglWas').addEventListener('click', function(){
-    viewMode = 'was';
-    $('tglWas').classList.add('active');
-    $('tglNow').classList.remove('active');
-    render();
+  // Переключатель режима разметки
+  document.querySelectorAll('#paintModes .seg').forEach(function(b){
+    b.addEventListener('click', function(){
+      document.querySelectorAll('#paintModes .seg').forEach(function(x){ x.classList.remove('active'); });
+      b.classList.add('active');
+      paintMode = +b.dataset.mode;
+      render();
+    });
   });
-  $('tglNow').addEventListener('click', function(){
-    viewMode = 'now';
-    $('tglNow').classList.add('active');
-    $('tglWas').classList.remove('active');
-    render();
+
+  // Переключатель "Было / Стало"
+  document.querySelectorAll('#viewModes .seg').forEach(function(b){
+    b.addEventListener('click', function(){
+      document.querySelectorAll('#viewModes .seg').forEach(function(x){ x.classList.remove('active'); });
+      b.classList.add('active');
+      viewMode = b.dataset.view;
+      render();
+    });
   });
 
   document.querySelectorAll('th[data-k]').forEach(function(th){

@@ -9,7 +9,7 @@
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
-.wrap{max-width:1400px;margin:0 auto;padding:20px 16px 48px}
+.wrap{max-width:1500px;margin:0 auto;padding:20px 16px 48px}
 header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;margin-bottom:20px}
 h1{margin:0;font-size:22px;font-weight:650;letter-spacing:-.01em}
 .sub{color:var(--muted);font-size:13px}
@@ -34,15 +34,15 @@ select,input[type=search]{border:1px solid var(--line);background:var(--panel);p
 #app{display:none;margin-top:20px}
 .bar{display:flex;flex-wrap:wrap;gap:14px 20px;align-items:end;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:16px}
 .field{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted)}
-.legend-inline{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--ink)}
-.legend-inline .lvl{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:5px;vertical-align:-1px}
-.lvl1{background:var(--lvl1)}
-.lvl2{background:var(--lvl2)}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:-1px}
+.dot.lvl1{background:var(--lvl1)}
+.dot.lvl2{background:var(--lvl2)}
 
-.toggle{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
-.toggle-btn{background:var(--panel);border:0;border-radius:0;min-height:32px;padding:5px 12px;font-size:12px;color:var(--muted)}
-.toggle-btn.active{background:var(--accent);color:#fff}
-@media (prefers-color-scheme:dark){.toggle-btn.active{color:#0f1512}}
+.segmented{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg{background:var(--panel);border:0;border-radius:0;min-height:34px;padding:6px 14px;font-size:13px;color:var(--muted);display:flex;align-items:center}
+.seg + .seg{border-left:1px solid var(--line)}
+.seg.active{background:var(--accent);color:#fff}
+@media (prefers-color-scheme:dark){.seg.active{color:#0f1512}}
 
 details{margin-bottom:16px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 16px}
 summary{cursor:pointer;color:var(--muted);font-size:14px}
@@ -65,13 +65,13 @@ summary{cursor:pointer;color:var(--muted);font-size:14px}
   border:2px solid transparent;
   border-left-width:4px;
   padding:4px 5px;
-  display:flex;flex-direction:column;justify-content:center;overflow:hidden;cursor:default;
-  transition:box-shadow .2s;
+  display:flex;flex-direction:column;justify-content:center;overflow:hidden;cursor:pointer;
+  transition:box-shadow .15s, transform .1s;
 }
 .cell .n{position:absolute;top:2px;right:4px;font-size:9px;color:var(--muted);opacity:.7}
 .cell .q{font-size:15px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.1}
 .cell .a{font-size:9px;color:var(--muted);line-height:1.2;margin-top:2px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;word-break:break-word}
-.cell .mv{position:absolute;bottom:2px;left:4px;font-size:8px;color:var(--muted);opacity:.8;font-weight:600}
+.cell .mv{position:absolute;bottom:2px;left:4px;font-size:8px;color:var(--muted);opacity:.85;font-weight:600}
 
 .cell.high{background:color-mix(in srgb,var(--high) 22%,var(--panel));border-left-color:var(--high)}
 .cell.mid{background:color-mix(in srgb,var(--mid) 22%,var(--panel));border-left-color:var(--mid)}
@@ -80,8 +80,9 @@ summary{cursor:pointer;color:var(--muted);font-size:14px}
 
 .cell.lvl-1{box-shadow:0 0 0 2px var(--lvl1) inset}
 .cell.lvl-2{box-shadow:0 0 0 2px var(--lvl2) inset}
-.cell.changed{animation:pulse .8s ease}
-@keyframes pulse{0%{transform:scale(1)}50%{transform:scale(1.06)}100%{transform:scale(1)}}
+
+.cell.paint-1:hover{box-shadow:0 0 0 2px var(--lvl1) inset, 0 0 0 4px color-mix(in srgb,var(--lvl1) 30%, transparent)}
+.cell.paint-2:hover{box-shadow:0 0 0 2px var(--lvl2) inset, 0 0 0 4px color-mix(in srgb,var(--lvl2) 30%, transparent)}
 
 /* ---------- Таблицы ---------- */
 .tbl{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:16px}

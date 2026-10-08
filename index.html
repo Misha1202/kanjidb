@@ -25,7 +25,7 @@
 
 <div id="drop" tabindex="0" role="button">
   <b>Перетащите файл Excel сюда или нажмите, чтобы выбрать</b>
-  <span>Колонки: адрес ПВЗ, квадрат, ячейка (1–54), количество коробок</span>
+  <span>Колонки: адрес ПВЗ, квадрат, ячейка (1–…), количество коробок</span>
 </div>
 <div id="msg" role="status"></div>
 
@@ -36,18 +36,19 @@
     </label>
 
     <div class="field">
-      <span>Уровни</span>
-      <div class="legend-inline">
-        <span><i class="lvl lvl1"></i>1-й (сильные)</span>
-        <span><i class="lvl lvl2"></i>2-й (слабые)</span>
+      <span>Режим разметки уровней</span>
+      <div class="segmented" id="paintModes">
+        <button type="button" class="seg" data-mode="0">Выкл</button>
+        <button type="button" class="seg" data-mode="1"><i class="dot lvl1"></i>1-й уровень</button>
+        <button type="button" class="seg" data-mode="2"><i class="dot lvl2"></i>2-й уровень</button>
       </div>
     </div>
 
     <div class="field">
       <span>Показать</span>
-      <div class="toggle">
-        <button id="tglWas" class="toggle-btn active" type="button">Было</button>
-        <button id="tglNow" class="toggle-btn" type="button">Стало</button>
+      <div class="segmented" id="viewModes">
+        <button type="button" class="seg active" data-view="was">Было</button>
+        <button type="button" class="seg" data-view="now">Стало</button>
       </div>
     </div>
 

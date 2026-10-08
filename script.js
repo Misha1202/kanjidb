@@ -42,15 +42,43 @@
     });
   }
 
-  /* ---------- Сетка ---------- */
-  var grid = $('grid');
-  for (var i = 1; i <= 54; i++) {
-    var c = document.createElement('div');
-    c.className = 'cell empty';
-    c.innerHTML = '<span class="n">' + i + '</span><div class="q">0</div><div class="a">Пусто</div>';
-    grid.appendChild(c);
+  /* ---------- Сетка: 6 групп × (3 колонки × 3 строки) = 54 ячейки ---------- */
+  var cellRefs = [];   // [cell0, cell1, ... cell53] — линейный порядок обхода
+  function buildGrid(){
+    var grid = $('grid');
+    grid.innerHTML = '';
+    cellRefs = [];
+
+    var counter = 1;
+    // 6 групп слева направо
+    for (var g = 0; g < 6; g++) {
+      var group = document.createElement('div');
+      group.className = 'group';
+
+      // Внутри группы: 3 колонки по 3 ячейки. 
+      // Порядок нумерации: сверху вниз, потом вправо (как на вашем скрине)
+      // col0: 1,2,3 ; col1: 4,5,6 ; col2: 7,8,9
+      // но нам нужно, чтобы нумерация шла непрерывно по группам:
+      // Группа 1: 1..9, Группа 2: 10..18 и т.д.
+      // Внутри группы столбцы идут слева направо.
+      var localCells = [];
+      for (var col = 0; col < 3; col++) {
+        for (var row = 0; row < 3; row++) {
+          var num = (g * 9) + (col * 3) + row + 1;
+          var c = document.createElement('div');
+          c.className = 'cell empty';
+          c.dataset.num = num;
+          c.innerHTML = '<span class="n">' + num + '</span><div class="q">0</div><div class="a">Пусто</div>';
+          group.appendChild(c);
+          localCells.push(c);
+        }
+      }
+      grid.appendChild(group);
+      cellRefs = cellRefs.concat(localCells);
+      counter += 9;
+    }
   }
-  var cells = grid.children;
+  buildGrid();
 
   /* ---------- Загрузка файла ---------- */
   function handleFile(file){
@@ -166,12 +194,13 @@
     var list = current();
 
     for (var i = 0; i < 54; i++) {
-      var c = cells[i], d = list[i];
+      var c = cellRefs[i], d = list[i];
+      if (!c) continue;
       if (d) {
         c.className = 'cell ' + d.level;
         c.querySelector('.q').textContent = d.qty;
         c.querySelector('.a').textContent = d.address;
-        c.title = d.address + ' — ' + d.qty + ' (' + LEVEL[d.level] + ')';
+        c.title = 'Ячейка ' + (i + 1) + ': ' + d.address + ' — ' + d.qty + ' (' + LEVEL[d.level] + ')';
       } else {
         c.className = 'cell empty';
         c.querySelector('.q').textContent = '0';
@@ -264,7 +293,7 @@
   drop.addEventListener('keydown', function(e){ if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(); } });
   fileInput.addEventListener('change', function(){
     var f = fileInput.files && fileInput.files[0];
-    fileInput.value = '';          // позволяет выбрать тот же файл ещё раз
+    fileInput.value = '';
     handleFile(f);
   });
   ['dragenter','dragover'].forEach(function(ev){
@@ -274,7 +303,6 @@
     drop.addEventListener(ev, function(e){ e.preventDefault(); drop.classList.remove('over'); });
   });
   drop.addEventListener('drop', function(e){ handleFile(e.dataTransfer.files && e.dataTransfer.files[0]); });
-  // не даём браузеру открыть файл, если промахнулись мимо зоны
   window.addEventListener('dragover', function(e){ e.preventDefault(); });
   window.addEventListener('drop', function(e){ e.preventDefault(); });
 

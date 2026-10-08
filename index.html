@@ -11,12 +11,12 @@
 <header>
   <div>
     <h1>Тепловая карта нагрузки ПВЗ</h1>
-    <div class="sub">54 ячейки: 18 столбцов × 3 строки, сгруппированы по 3×3</div>
+    <div class="sub">54 ячейки: 18 столбцов × 3 строки, сгруппированы по 3×3. Расчёт — по выбранному квадрату.</div>
   </div>
   <div class="actions">
     <button id="btnTpl">Скачать шаблон</button>
     <button id="btnOpen">Загрузить Excel</button>
-    <button id="btnExport" class="primary" disabled>Скачать отчёт</button>
+    <button id="btnExport" class="primary" disabled>Скачать отчёт по квадрату</button>
     <input type="file" id="file" accept=".xlsx,.xls,.csv" hidden>
   </div>
 </header>
@@ -38,7 +38,7 @@
     <label class="field">Средний от <output id="oMid">30%</output>
       <input type="range" id="tMid" min="5" max="90" value="30">
     </label>
-    <label class="field">Проценты считаются от максимума в квадрате</label>
+    <label class="field">Проценты считаются от максимума внутри выбранного квадрата</label>
   </div>
 
   <details id="mapBox">
@@ -51,8 +51,9 @@
   </details>
 
   <div class="stats">
+    <div class="stat"><small>Квадрат</small><div id="sSq">—</div></div>
     <div class="stat"><small>ПВЗ в квадрате</small><div id="sCount">0</div></div>
-    <div class="stat"><small>Коробок всего</small><div id="sSum">0</div></div>
+    <div class="stat"><small>Коробок в квадрате</small><div id="sSum">0</div></div>
     <div class="stat"><small>В среднем на ПВЗ</small><div id="sAvg">0</div></div>
     <div class="stat"><small>Не поместилось в 54 ячейки</small><div id="sOver">0</div></div>
   </div>
@@ -65,14 +66,12 @@
   </div>
 
   <div class="heat">
-    <div id="grid" class="grid">
-      <!-- Генерируется скриптом: 6 групп × 9 ячеек = 54 -->
-    </div>
+    <div id="grid" class="grid"></div>
   </div>
 
   <div class="tbl">
     <div class="tbl-head">
-      <strong>Список ПВЗ</strong>
+      <strong>Список ПВЗ в выбранном квадрате</strong>
       <input type="search" id="q" placeholder="Поиск по адресу">
     </div>
     <div class="scroll">

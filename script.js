@@ -1,16 +1,16 @@
 (function(){
   'use strict';
   var $ = function(id){ return document.getElementById(id); };
-  var rows = [];               // сырые строки листа
+  var rows = [];
   var headers = [];
-  var data = [];               // {square, address, cell, qty} — исходные данные из файла
+  var data = [];               // {square, address, cell, qty}
   var layout = {};             // { square: [ {cell, level, square, address, qty, origCell, moved} x N ] }
   var levelMap = { 1: [], 2: [] };
   var sortKey = 'cell', sortDir = 1;
-  var viewMode = 'was';        // 'was' | 'now'
-  var paintMode = 0;           // 0 — выкл, 1 — уровень 1, 2 — уровень 2
+  var viewMode = 'was';
+  var paintMode = 0;           // 0 | 1 | 2
   var totalCells = 54;
-  var cellRefs = [];           // [cell] по номеру-1 (cellRefs[i] соответствует ячейке i+1)
+  var cellRefs = [];           // cellRefs[cellNum-1] = DOM-элемент
   var LEVEL_LOAD = { high: 'Ходовой', mid: 'Средний', low: 'Низкий' };
 
   /* ---------- XLSX ---------- */
@@ -40,15 +40,18 @@
   function msg(text, type){ var m = $('msg'); m.textContent = text || ''; m.className = text ? type : ''; }
   function esc(s){ return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
   function cellsNeeded(maxCell){
-    // Кратно 9, минимум 6 групп (54 ячейки)
     var groups = Math.max(6, Math.ceil((maxCell || 54) / 9));
     return groups * 9;
   }
 
   /* ---------- Сетка ----------
-     Нумерация сверху вниз: внутри группы идут столбцы по 3 ячейки.
+     Нумерация СВЕРХУ ВНИЗ внутри каждого столбца группы.
+     Внешний цикл — row (0..2), внутренний — col (0..2).
      Формула: num = group * 9 + col * 3 + row + 1
-     col — 0..2 (слева-направо), row — 0..2 (сверху-вниз)
+     Проверка для первой группы:
+       row=0, col=0 → 1   row=0, col=1 → 4   row=0, col=2 → 7
+       row=1, col=0 → 2   row=1, col=1 → 5   row=1, col=2 → 8
+       row=2, col=0 → 3   row=2, col=1 → 6   row=2, col=2 → 9
   */
   function buildGrid(maxCell){
     var total = cellsNeeded(maxCell);
@@ -62,8 +65,14 @@
     for (var g = 0; g < groups; g++) {
       var group = document.createElement('div');
       group.className = 'group';
-      for (var col = 0; col < 3; col++) {
-        for (var row = 0; row < 3; row++) {
+
+      // ВАЖНО: сначала row (сверху вниз), потом col (слева-направо).
+      // Но чтобы DOM-порядок в group совпадал с CSS-сеткой (3 колонки × 3 строки),
+      // элементы нужно добавлять в порядке: (row0col0), (row0col1), (row0col2),
+      //                                          (row1col0), (row1col1), (row1col2), ...
+      // А номер ячейки считаем как col*3 + row + 1 — это даёт "сверху вниз" в столбце.
+      for (var row = 0; row < 3; row++) {
+        for (var col = 0; col < 3; col++) {
           var num = g * 9 + col * 3 + row + 1;
           var c = document.createElement('div');
           c.className = 'cell empty';
@@ -89,10 +98,8 @@
       levelMap[1] = levelMap[1].filter(function(n){ return n !== num; });
       levelMap[2] = levelMap[2].filter(function(n){ return n !== num; });
     } else {
-      // убрать из противоположного
       if (paintMode === 1) levelMap[2] = levelMap[2].filter(function(n){ return n !== num; });
       if (paintMode === 2) levelMap[1] = levelMap[1].filter(function(n){ return n !== num; });
-      // добавить
       if (levelMap[paintMode].indexOf(num) === -1) levelMap[paintMode].push(num);
       levelMap[paintMode].sort(function(a, b){ return a - b; });
     }
@@ -181,7 +188,6 @@
     data = Object.keys(agg).map(function(k){ return agg[k]; });
     if (!data.length) { msg('Не найдено ни одной строки с адресом и ячейкой.', 'err'); return; }
 
-    // Максимальный номер ячейки по всему файлу — для сетки
     var maxCell = 54;
     data.forEach(function(d){ if (d.cell > maxCell) maxCell = d.cell; });
     buildGrid(maxCell);
@@ -202,22 +208,37 @@
     render();
   }
 
-  /* ---------- Пересчёт ---------- */
   function recalcAll(){
     rebuildLayout();
     render();
-    msg('Пересчёт применён ко всем квадратам: 1-й ур. — ' + levelMap[1].length + ' яч., 2-й — ' + levelMap[2].length + ' яч.', 'ok');
+    msg('Пересчёт: 1-й ур. — ' + levelMap[1].length + ' яч., 2-й — ' + levelMap[2].length + ' яч.', 'ok');
     $('btnExportOne').disabled = false;
     $('btnExportAll').disabled = false;
   }
 
-  /* ---------- Основная логика перестановки внутри одного квадрата ---------- */
+  /* ---------- ЯДРО: перестановка офисов внутри квадрата ----------
+
+     Идея:
+       1. Сортируем все офисы квадрата по qty по убыванию.
+       2. Сильные = топ-N1 (N1 = число ячеек 1-го уровня).
+       3. Из оставшихся сортируем по qty по возрастанию, слабые = топ-N2.
+       4. Каждому сильному сопоставляем целевую ячейку levelMap[1][i].
+          Делаем СВАП двух ячеек: origCell офиса и targetCell.
+       5. Аналогично для слабых с levelMap[2][i].
+
+     Свап работает так:
+       - Пусть офис A сейчас на ячейке X, целевая ячейка Y.
+       - Офис B (тот, кто сейчас на Y) переезжает в X.
+       - A переезжает в Y.
+       - Если Y пустая — просто A → Y, а X остаётся пустой.
+  */
   function applyLevelsToSquare(square){
+    // Офисы квадрата
     var list = data.filter(function(d){ return d.square === square; })
       .map(function(d){ return { square: d.square, address: d.address, origCell: d.cell, qty: d.qty }; });
     if (!list.length) return [];
 
-    // Сортировка по убыванию коробок (сильные сверху)
+    // Сортируем по убыванию
     var byQtyDesc = list.slice().sort(function(a, b){
       if (b.qty !== a.qty) return b.qty - a.qty;
       return a.address.localeCompare(b.address, 'ru');
@@ -226,68 +247,65 @@
     var l1 = levelMap[1].slice();
     var l2 = levelMap[2].slice();
 
-    var placement = {};       // cell -> office
-    list.forEach(function(d){ placement[d.origCell] = d; });
-
-    var used = {};
-    var strongOffices = [];
-    var weakOffices = [];
-
-    // 1. Сильные: топ-N из byQtyDesc, N = размер 1-го уровня
+    // 1. Сильные
     var strongCount = Math.min(l1.length, byQtyDesc.length);
-    for (var i = 0; i < strongCount; i++) {
-      strongOffices.push(byQtyDesc[i]);
-      used[byQtyDesc[i].address] = true;
-    }
+    var strongOffices = byQtyDesc.slice(0, strongCount);
 
-    // 2. Слабые: топ-M по возрастанию qty из оставшихся
-    var rest = byQtyDesc.filter(function(d){ return !used[d.address]; })
+    // 2. Слабые — из оставшихся
+    var taken = {};
+    strongOffices.forEach(function(o){ taken[o.address + '|' + o.origCell] = true; });
+
+    var rest = byQtyDesc.filter(function(o){ return !taken[o.address + '|' + o.origCell]; })
       .slice()
       .sort(function(a, b){
         if (a.qty !== b.qty) return a.qty - b.qty;
         return a.address.localeCompare(b.address, 'ru');
       });
     var weakCount = Math.min(l2.length, rest.length);
-    for (var j = 0; j < weakCount; j++) {
-      weakOffices.push(rest[j]);
-      used[rest[j].address] = true;
+    var weakOffices = rest.slice(0, weakCount);
+
+    // 3. Текущее размещение: cell -> office
+    var placement = {};
+    list.forEach(function(o){ placement[o.origCell] = o; });
+
+    // Вспомогательная функция свапа ячеек
+    function swapCells(cellA, cellB){
+      if (cellA === cellB) return;
+      var a = placement[cellA];
+      var b = placement[cellB];
+      // Меняем местами
+      if (b) placement[cellA] = b; else delete placement[cellA];
+      if (a) placement[cellB] = a; else delete placement[cellB];
     }
 
-    // 3. Раскладываем сильных
-    strongOffices.forEach(function(strong, idx){
-      var targetCell = l1[idx];
-      var displaced = placement[targetCell];
-      var strongOrig = strong.origCell;
-
-      if (displaced && displaced !== strong) {
-        delete placement[targetCell];
-        placement[strongOrig] = displaced;
-        displaced.newCell = strongOrig;
-      } else if (!displaced) {
-        delete placement[strong.origCell];
+    // 4. Раскладываем сильных
+    for (var i = 0; i < strongOffices.length; i++) {
+      var strong = strongOffices[i];
+      var target = l1[i];
+      var current = strong.origCell; // ВАЖНО: используем origCell, а не текущее положение.
+      // Если офис уже куда-то переставлен ранее — нужно взять его АКТУАЛЬНУЮ ячейку.
+      // Найдём, где сейчас лежит этот офис:
+      var curCell = null;
+      for (var k in placement) {
+        if (placement[k] === strong) { curCell = +k; break; }
       }
-      placement[targetCell] = strong;
-      strong.newCell = targetCell;
-    });
+      if (curCell === null) curCell = current;
+      swapCells(curCell, target);
+    }
 
-    // 4. Раскладываем слабых
-    weakOffices.forEach(function(weak, idx){
-      var targetCell = l2[idx];
-      var displaced = placement[targetCell];
-      var weakOrig = weak.origCell;
-
-      if (displaced && displaced !== weak) {
-        delete placement[targetCell];
-        placement[weakOrig] = displaced;
-        displaced.newCell = weakOrig;
-      } else if (!displaced) {
-        delete placement[weak.origCell];
+    // 5. Раскладываем слабых
+    for (var j = 0; j < weakOffices.length; j++) {
+      var weak = weakOffices[j];
+      var target2 = l2[j];
+      var curCell2 = null;
+      for (var k2 in placement) {
+        if (placement[k2] === weak) { curCell2 = +k2; break; }
       }
-      placement[targetCell] = weak;
-      weak.newCell = targetCell;
-    });
+      if (curCell2 === null) curCell2 = weak.origCell;
+      swapCells(curCell2, target2);
+    }
 
-    // 5. Собираем результат
+    // 6. Собираем результат
     var maxCell = 54;
     Object.keys(placement).forEach(function(k){
       var n = +k;
@@ -332,19 +350,14 @@
     var sq = $('sq').value;
     var cells = layout[sq] || [];
 
-    // Определяем, сколько ячеек нужно нарисовать для этого квадрата
     var maxCell = 54;
-    data.forEach(function(d){
-      if (d.square === sq && d.cell > maxCell) maxCell = d.cell;
-    });
+    data.forEach(function(d){ if (d.square === sq && d.cell > maxCell) maxCell = d.cell; });
     var needed = cellsNeeded(maxCell);
     if (needed !== totalCells) buildGrid(maxCell);
 
-    // Мапа cell -> office
     var byCell = {};
     cells.forEach(function(c){ byCell[c.cell] = c; });
 
-    // Цветовая шкала
     var maxQty = 1;
     cells.forEach(function(c){ if (c.qty > maxQty) maxQty = c.qty; });
     var tH = 0.7, tM = 0.3;
@@ -354,7 +367,7 @@
       if (!c) continue;
       var d = byCell[n];
 
-      // Режим "Было": показать офис на его исходной ячейке
+      // Режим "Было": офис на своей исходной ячейке
       if (viewMode === 'was') {
         var wasOffice = null;
         cells.forEach(function(x){ if (x.origCell === n) wasOffice = x; });
@@ -375,11 +388,7 @@
         c.classList.add(load);
         c.querySelector('.q').textContent = d.qty;
         c.querySelector('.a').textContent = d.address;
-        if (viewMode === 'now' && d.moved) {
-          c.querySelector('.mv').textContent = '← ' + d.origCell;
-        } else {
-          c.querySelector('.mv').textContent = '';
-        }
+        c.querySelector('.mv').textContent = (viewMode === 'now' && d.moved) ? '← ' + d.origCell : '';
         c.title = 'Ячейка ' + n +
           (viewMode === 'now' ? ' (уровень ' + lvl + ')' : '') +
           '\n' + d.address + '\n' + d.qty + ' кор.' +
@@ -393,12 +402,9 @@
       }
     }
 
-    // Статистика
-    var sum = 0, l1Count = 0, l2Count = 0, officesCount = 0;
+    var sum = 0, officesCount = 0;
     cells.forEach(function(c){
       if (c.address) { sum += c.qty; officesCount++; }
-      if (c.level === 1) l1Count++;
-      else if (c.level === 2) l2Count++;
     });
     $('sSq').textContent = sq || '—';
     $('sCount').textContent = officesCount;
@@ -434,7 +440,6 @@
     }).join('') : '<tr><td colspan="5" style="color:var(--muted)">Ничего не найдено</td></tr>';
   }
 
-  /* ---------- Сброс ---------- */
   function resetLevels(){
     levelMap = { 1: [], 2: [] };
     rebuildLayout();
@@ -501,29 +506,24 @@
       if (applyAll) {
         newLayout[sq] = applyLevelsToSquare(sq);
       } else {
-        if (sq === selected) newLayout[sq] = applyLevelsToSquare(sq);
-        else newLayout[sq] = oldLayout[sq] || [];
+        newLayout[sq] = (sq === selected) ? applyLevelsToSquare(sq) : (oldLayout[sq] || []);
       }
     });
 
     loadXLSX().then(function(){
       var wb = XLSX.utils.book_new();
 
-      // Сводка
       var summary = [['Квадрат', 'Офисов', 'Коробок всего', 'Ячеек 1-го ур.', 'Ячеек 2-го ур.']];
       squares.forEach(function(sq){
         var cells = newLayout[sq] || [];
         var offices = cells.filter(function(c){ return c.address; });
         var sum = offices.reduce(function(s, c){ return s + c.qty; }, 0);
-        var l1c = cells.filter(function(c){ return c.level === 1; }).length;
-        var l2c = cells.filter(function(c){ return c.level === 2; }).length;
-        summary.push([sq, offices.length, Math.round(sum * 100) / 100, l1c, l2c]);
+        summary.push([sq, offices.length, Math.round(sum * 100) / 100, levelMap[1].length, levelMap[2].length]);
       });
       var wsSum = XLSX.utils.aoa_to_sheet(summary);
       wsSum['!cols'] = [{wch:30},{wch:10},{wch:14},{wch:16},{wch:16}];
       XLSX.utils.book_append_sheet(wb, wsSum, 'Сводка');
 
-      // Листы по квадратам
       squares.forEach(function(sq){
         var cells = newLayout[sq] || [];
         var offices = cells.filter(function(c){ return c.address; });
@@ -591,7 +591,6 @@
   $('q').addEventListener('input', function(){ renderTable(layout[$('sq').value] || []); });
   ['cAddr','cSq','cCell','cQty'].forEach(function(id){ $(id).addEventListener('change', applyMapping); });
 
-  // Переключатель режима разметки
   document.querySelectorAll('#paintModes .seg').forEach(function(b){
     b.addEventListener('click', function(){
       document.querySelectorAll('#paintModes .seg').forEach(function(x){ x.classList.remove('active'); });
@@ -601,7 +600,6 @@
     });
   });
 
-  // Переключатель "Было / Стало"
   document.querySelectorAll('#viewModes .seg').forEach(function(b){
     b.addEventListener('click', function(){
       document.querySelectorAll('#viewModes .seg').forEach(function(x){ x.classList.remove('active'); });

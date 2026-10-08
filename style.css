@@ -43,11 +43,12 @@ summary{cursor:pointer;color:var(--muted);font-size:14px}
 .stat{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
 .stat small{color:var(--muted);font-size:12px}
 .stat div{font-size:24px;font-weight:700;font-variant-numeric:tabular-nums}
+.stat div.sq{font-size:18px;word-break:break-word}
 
 .legend{display:flex;flex-wrap:wrap;gap:16px;margin:0 0 12px;font-size:13px;color:var(--muted)}
 .legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px}
 
-/* ---------- ТЕПЛОВАЯ КАРТА: 18 колонок × 3 строки, 6 групп по 3×3 ---------- */
+/* ---------- ТЕПЛОВАЯ КАРТА ---------- */
 .heat{
   background:var(--panel);
   border:1px solid var(--line);
@@ -57,11 +58,10 @@ summary{cursor:pointer;color:var(--muted);font-size:14px}
   margin-bottom:16px;
 }
 
-/* Контейнер сетки: 6 групп по горизонтали */
 .grid{
   display:grid;
   grid-template-columns:repeat(6, auto);
-  gap:14px;                 /* отступ между группами */
+  gap:14px;
   padding:10px;
   border:2px dashed var(--accent);
   border-radius:8px;
@@ -69,19 +69,17 @@ summary{cursor:pointer;color:var(--muted);font-size:14px}
   min-width:100%;
 }
 
-/* Каждая группа — 3 колонки × 3 строки */
 .group{
   display:grid;
   grid-template-columns:repeat(3, 1fr);
   grid-template-rows:repeat(3, 1fr);
-  gap:3px;                  /* маленький отступ между ячейками внутри группы */
+  gap:3px;
   padding:3px;
   background:color-mix(in srgb, var(--accent) 6%, transparent);
   border:1px solid var(--line);
   border-radius:6px;
 }
 
-/* Ячейка — прямоугольник, вытянутый по вертикали */
 .cell{
   position:relative;
   width:62px;

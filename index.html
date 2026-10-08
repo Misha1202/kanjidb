@@ -3,27 +3,29 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Тепловая карта нагрузки ПВЗ</title>
+<title>Перераспределение нагрузки ПВЗ</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <div class="wrap">
 <header>
   <div>
-    <h1>Тепловая карта нагрузки ПВЗ</h1>
-    <div class="sub">54 ячейки: 18 столбцов × 3 строки, сгруппированы по 3×3. Расчёт — по выбранному квадрату.</div>
+    <h1>Перераспределение нагрузки ПВЗ</h1>
+    <div class="sub">1-й уровень — самые сильные офисы, 2-й уровень — самые слабые. Внутри каждого квадрата.</div>
   </div>
   <div class="actions">
     <button id="btnTpl">Скачать шаблон</button>
     <button id="btnOpen">Загрузить Excel</button>
-    <button id="btnExport" class="primary" disabled>Скачать отчёт по квадрату</button>
+    <button id="btnRecalc" class="primary" disabled>Пересчитать</button>
+    <button id="btnExportOne" disabled>Скачать текущий КС</button>
+    <button id="btnExportAll" disabled>Скачать все КС</button>
     <input type="file" id="file" accept=".xlsx,.xls,.csv" hidden>
   </div>
 </header>
 
-<div id="drop" tabindex="0" role="button" aria-label="Выбрать файл">
+<div id="drop" tabindex="0" role="button">
   <b>Перетащите файл Excel сюда или нажмите, чтобы выбрать</b>
-  <span>Колонки: адрес ПВЗ, квадрат, количество коробок. Форматы: .xlsx, .xls, .csv</span>
+  <span>Колонки: адрес ПВЗ, квадрат, ячейка (1–54), количество коробок</span>
 </div>
 <div id="msg" role="status"></div>
 
@@ -32,13 +34,24 @@
     <label class="field">Квадрат
       <select id="sq"></select>
     </label>
-    <label class="field">Ходовой от <output id="oHigh">70%</output>
-      <input type="range" id="tHigh" min="30" max="95" value="70">
-    </label>
-    <label class="field">Средний от <output id="oMid">30%</output>
-      <input type="range" id="tMid" min="5" max="90" value="30">
-    </label>
-    <label class="field">Проценты считаются от максимума внутри выбранного квадрата</label>
+
+    <div class="field">
+      <span>Уровни</span>
+      <div class="legend-inline">
+        <span><i class="lvl lvl1"></i>1-й (сильные)</span>
+        <span><i class="lvl lvl2"></i>2-й (слабые)</span>
+      </div>
+    </div>
+
+    <div class="field">
+      <span>Показать</span>
+      <div class="toggle">
+        <button id="tglWas" class="toggle-btn active" type="button">Было</button>
+        <button id="tglNow" class="toggle-btn" type="button">Стало</button>
+      </div>
+    </div>
+
+    <button id="btnReset" disabled>Сбросить уровни</button>
   </div>
 
   <details id="mapBox">
@@ -46,42 +59,34 @@
     <div class="map">
       <label class="field">Адрес<select id="cAddr"></select></label>
       <label class="field">Квадрат<select id="cSq"></select></label>
+      <label class="field">Ячейка<select id="cCell"></select></label>
       <label class="field">Коробок<select id="cQty"></select></label>
     </div>
   </details>
 
   <div class="stats">
-    <div class="stat"><small>Квадрат</small><div id="sSq">—</div></div>
-    <div class="stat"><small>ПВЗ в квадрате</small><div id="sCount">0</div></div>
-    <div class="stat"><small>Коробок в квадрате</small><div id="sSum">0</div></div>
-    <div class="stat"><small>В среднем на ПВЗ</small><div id="sAvg">0</div></div>
-    <div class="stat"><small>Не поместилось в 54 ячейки</small><div id="sOver">0</div></div>
+    <div class="stat"><small>Квадрат</small><div id="sSq" class="sq">—</div></div>
+    <div class="stat"><small>Офисов</small><div id="sCount">0</div></div>
+    <div class="stat"><small>Коробок всего</small><div id="sSum">0</div></div>
+    <div class="stat"><small>Ячеек 1-го ур.</small><div id="sL1">0</div></div>
+    <div class="stat"><small>Ячеек 2-го ур.</small><div id="sL2">0</div></div>
   </div>
 
-  <div class="legend">
-    <span><i style="background:var(--high)"></i>Ходовой</span>
-    <span><i style="background:var(--mid)"></i>Средний</span>
-    <span><i style="background:var(--low)"></i>Низкий</span>
-    <span><i style="background:var(--empty)"></i>Пусто</span>
-  </div>
-
-  <div class="heat">
-    <div id="grid" class="grid"></div>
-  </div>
+  <div class="heat"><div id="grid" class="grid"></div></div>
 
   <div class="tbl">
     <div class="tbl-head">
-      <strong>Список ПВЗ в выбранном квадрате</strong>
+      <strong>Офисы в выбранном квадрате</strong>
       <input type="search" id="q" placeholder="Поиск по адресу">
     </div>
     <div class="scroll">
       <table>
         <thead><tr>
-          <th data-k="rank" class="num">№</th>
+          <th data-k="cell" class="num">Ячейка</th>
+          <th data-k="origCell" class="num">Была</th>
+          <th data-k="level" class="num">Ур.</th>
           <th data-k="address">Адрес ПВЗ</th>
           <th data-k="qty" class="num">Коробок</th>
-          <th data-k="pct" class="num">% от макс.</th>
-          <th data-k="level">Уровень</th>
         </tr></thead>
         <tbody id="tb"></tbody>
       </table>

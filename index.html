@@ -11,7 +11,7 @@
 <header>
   <div>
     <h1>Тепловая карта нагрузки ПВЗ</h1>
-    <div class="sub">54 ячейки (6×9), самые загруженные ПВЗ идут первыми</div>
+    <div class="sub">54 ячейки: 18 столбцов × 3 строки, сгруппированы по 3×3</div>
   </div>
   <div class="actions">
     <button id="btnTpl">Скачать шаблон</button>
@@ -64,7 +64,11 @@
     <span><i style="background:var(--empty)"></i>Пусто</span>
   </div>
 
-  <div class="heat"><div id="grid"></div></div>
+  <div class="heat">
+    <div id="grid" class="grid">
+      <!-- Генерируется скриптом: 6 групп × 9 ячеек = 54 -->
+    </div>
+  </div>
 
   <div class="tbl">
     <div class="tbl-head">

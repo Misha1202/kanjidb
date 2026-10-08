@@ -1,9 +1,9 @@
 (function(){
   'use strict';
   var $ = function(id){ return document.getElementById(id); };
-  var rows = [];          // сырые строки листа (массив массивов)
+  var rows = [];          // сырые строки листа
   var headers = [];
-  var data = [];          // {square,address,qty}
+  var data = [];          // {square,address,qty} — все ПВЗ по всем квадратам
   var sortKey = 'rank', sortDir = 1;
   var LEVEL = { high: 'Ходовой', mid: 'Средний', low: 'Низкий' };
 
@@ -43,24 +43,16 @@
   }
 
   /* ---------- Сетка: 6 групп × (3 колонки × 3 строки) = 54 ячейки ---------- */
-  var cellRefs = [];   // [cell0, cell1, ... cell53] — линейный порядок обхода
+  var cellRefs = [];
   function buildGrid(){
     var grid = $('grid');
     grid.innerHTML = '';
     cellRefs = [];
 
-    var counter = 1;
-    // 6 групп слева направо
     for (var g = 0; g < 6; g++) {
       var group = document.createElement('div');
       group.className = 'group';
 
-      // Внутри группы: 3 колонки по 3 ячейки. 
-      // Порядок нумерации: сверху вниз, потом вправо (как на вашем скрине)
-      // col0: 1,2,3 ; col1: 4,5,6 ; col2: 7,8,9
-      // но нам нужно, чтобы нумерация шла непрерывно по группам:
-      // Группа 1: 1..9, Группа 2: 10..18 и т.д.
-      // Внутри группы столбцы идут слева направо.
       var localCells = [];
       for (var col = 0; col < 3; col++) {
         for (var row = 0; row < 3; row++) {
@@ -75,7 +67,6 @@
       }
       grid.appendChild(group);
       cellRefs = cellRefs.concat(localCells);
-      counter += 9;
     }
   }
   buildGrid();
@@ -166,7 +157,7 @@
     render();
   }
 
-  /* ---------- Расчёт ---------- */
+  /* ---------- Расчёт — ТОЛЬКО ПО ВЫБРАННОМУ КВАДРАТУ ---------- */
   function thresholds(){
     var h = +$('tHigh').value / 100, m = +$('tMid').value / 100;
     if (m > h) m = h;
@@ -174,12 +165,16 @@
   }
   function level(ratio, t){ return ratio >= t.high ? 'high' : (ratio >= t.mid ? 'mid' : 'low'); }
 
+  // Возвращает список ПВЗ только для выбранного квадрата, с рассчитанными rank/pct/level
   function current(){
     var sq = $('sq').value;
     var list = data.filter(function(d){ return d.square === sq; })
       .sort(function(a, b){ return b.qty - a.qty || a.address.localeCompare(b.address, 'ru'); });
+
+    // Максимум считаем ТОЛЬКО внутри этого квадрата
     var max = list.length ? (list[0].qty || 1) : 1;
     var t = thresholds();
+
     list.forEach(function(d, i){
       d.rank = i + 1;
       d.pct = Math.round(d.qty / max * 100);
@@ -191,8 +186,10 @@
   function render(){
     $('oHigh').textContent = $('tHigh').value + '%';
     $('oMid').textContent = $('tMid').value + '%';
-    var list = current();
 
+    var list = current();          // список ТОЛЬКО по текущему квадрату
+
+    // Заполняем 54 ячейки: первые N — ПВЗ текущего квадрата, остальные — пустые
     for (var i = 0; i < 54; i++) {
       var c = cellRefs[i], d = list[i];
       if (!c) continue;
@@ -209,11 +206,14 @@
       }
     }
 
+    // Статистика — только по выбранному квадрату
     var sum = list.reduce(function(s, d){ return s + d.qty; }, 0);
+    $('sSq').textContent = $('sq').value || '—';
     $('sCount').textContent = list.length;
     $('sSum').textContent = Math.round(sum * 100) / 100;
     $('sAvg').textContent = list.length ? Math.round(sum / list.length * 10) / 10 : 0;
     $('sOver').textContent = Math.max(0, list.length - 54);
+
     renderTable(list);
   }
 
@@ -231,42 +231,64 @@
     }).join('') : '<tr><td colspan="5" style="color:var(--muted)">Ничего не найдено</td></tr>';
   }
 
-  /* ---------- Экспорт ---------- */
+  /* ---------- Экспорт: отчёт по выбранному квадрату + сводка по всем ---------- */
   function exportReport(){
     if (!data.length) return;
+    var currentSquare = $('sq').value;
+    if (!currentSquare) return;
+
     loadXLSX().then(function(){
       var t = thresholds();
+
+      // Лист 1: детализация ТОЛЬКО по выбранному квадрату
+      var detail = [['Квадрат', 'Ячейка №', 'Адрес ПВЗ', 'Коробок', '% от макс.', 'Уровень']];
+      var list = data.filter(function(d){ return d.square === currentSquare; })
+        .slice()
+        .sort(function(a, b){ return b.qty - a.qty; });
+      var max = list.length ? (list[0].qty || 1) : 1;
+      list.forEach(function(d, i){
+        var lv = level(d.qty / max, t);
+        detail.push([currentSquare, i + 1, d.address, d.qty, Math.round(d.qty / max * 100) / 100, LEVEL[lv]]);
+      });
+
+      // Лист 2: сводка по ВСЕМ квадратам (для сравнения)
       var bySq = {};
       data.forEach(function(d){ (bySq[d.square] = bySq[d.square] || []).push(d); });
       var squares = Object.keys(bySq).sort(function(a, b){ return a.localeCompare(b, 'ru', { numeric: true }); });
 
-      var detail = [['Квадрат', 'Ячейка №', 'Адрес ПВЗ', 'Коробок', '% от макс.', 'Уровень']];
       var summary = [['Квадрат', 'ПВЗ', 'Коробок всего', 'В среднем на ПВЗ', 'Ходовых', 'Средних', 'Низких']];
-
       squares.forEach(function(sq){
-        var list = bySq[sq].slice().sort(function(a, b){ return b.qty - a.qty; });
-        var max = list[0].qty || 1, sum = 0, cnt = { high: 0, mid: 0, low: 0 };
-        list.forEach(function(d, i){
-          var lv = level(d.qty / max, t);
+        var l = bySq[sq].slice().sort(function(a, b){ return b.qty - a.qty; });
+        var m = l[0].qty || 1, sum = 0, cnt = { high: 0, mid: 0, low: 0 };
+        l.forEach(function(d){
+          var lv = level(d.qty / m, t);
           cnt[lv]++; sum += d.qty;
-          detail.push([sq, i + 1, d.address, d.qty, Math.round(d.qty / max * 100) / 100, LEVEL[lv]]);
         });
-        summary.push([sq, list.length, sum, Math.round(sum / list.length * 10) / 10, cnt.high, cnt.mid, cnt.low]);
+        summary.push([sq, l.length, sum, Math.round(sum / l.length * 10) / 10, cnt.high, cnt.mid, cnt.low]);
       });
 
       var wb = XLSX.utils.book_new();
-      var w1 = XLSX.utils.aoa_to_sheet(summary);
-      var w2 = XLSX.utils.aoa_to_sheet(detail);
-      w1['!cols'] = [{wch:14},{wch:8},{wch:14},{wch:18},{wch:10},{wch:10},{wch:10}];
-      w2['!cols'] = [{wch:14},{wch:10},{wch:50},{wch:10},{wch:12},{wch:12}];
+      var wDetail = XLSX.utils.aoa_to_sheet(detail);
+      var wSummary = XLSX.utils.aoa_to_sheet(summary);
+
+      wDetail['!cols'] = [{wch:14},{wch:10},{wch:50},{wch:10},{wch:12},{wch:12}];
+      wSummary['!cols'] = [{wch:14},{wch:8},{wch:14},{wch:18},{wch:10},{wch:10},{wch:10}];
+
+      // Формат процентов на листе детализации
       for (var r = 1; r < detail.length; r++) {
         var ref = XLSX.utils.encode_cell({ r: r, c: 4 });
-        if (w2[ref]) w2[ref].z = '0%';
+        if (wDetail[ref]) wDetail[ref].z = '0%';
       }
-      XLSX.utils.book_append_sheet(wb, w1, 'Сводка');
-      XLSX.utils.book_append_sheet(wb, w2, 'Все квадраты');
-      XLSX.writeFile(wb, 'heatmap_report.xlsx');
-      msg('Отчёт скачан: heatmap_report.xlsx', 'ok');
+
+      // Имя листа с квадратом (обрезаем до 31 символа — ограничение Excel)
+      var sheetName = ('Квадрат ' + currentSquare).slice(0, 31).replace(/[\\\/\?\*\[\]:]/g, '_');
+
+      XLSX.utils.book_append_sheet(wb, wDetail, sheetName);
+      XLSX.utils.book_append_sheet(wb, wSummary, 'Сводка по всем');
+
+      var safeName = String(currentSquare).replace(/[^\wа-яё\-]+/gi, '_').slice(0, 40) || 'square';
+      XLSX.writeFile(wb, 'heatmap_' + safeName + '.xlsx');
+      msg('Отчёт скачан по квадрату: ' + currentSquare, 'ok');
     }).catch(function(err){ msg(err.message, 'err'); });
   }
 
@@ -308,7 +330,7 @@
 
   $('btnExport').addEventListener('click', exportReport);
   $('btnTpl').addEventListener('click', downloadTemplate);
-  $('sq').addEventListener('change', render);
+  $('sq').addEventListener('change', render);       // смена квадрата -> полный пересчёт
   $('tHigh').addEventListener('input', render);
   $('tMid').addEventListener('input', render);
   $('q').addEventListener('input', function(){ renderTable(current()); });

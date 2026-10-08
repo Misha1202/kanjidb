@@ -47,15 +47,62 @@ summary{cursor:pointer;color:var(--muted);font-size:14px}
 .legend{display:flex;flex-wrap:wrap;gap:16px;margin:0 0 12px;font-size:13px;color:var(--muted)}
 .legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px}
 
-.heat{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;overflow-x:auto;margin-bottom:16px}
-#grid{display:grid;grid-template-columns:repeat(9,minmax(92px,1fr));gap:6px;min-width:860px}
-.cell{position:relative;min-height:78px;border-radius:8px;background:var(--empty);border-left:4px solid transparent;padding:6px 8px;display:flex;flex-direction:column;justify-content:center;overflow:hidden}
-.cell .n{position:absolute;top:3px;right:6px;font-size:10px;color:var(--muted)}
-.cell .q{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.1}
-.cell .a{font-size:11px;color:var(--muted);line-height:1.25;margin-top:2px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;word-break:break-word}
-.cell.high{background:color-mix(in srgb,var(--high) 20%,var(--panel));border-left-color:var(--high)}
-.cell.mid{background:color-mix(in srgb,var(--mid) 20%,var(--panel));border-left-color:var(--mid)}
-.cell.low{background:color-mix(in srgb,var(--low) 18%,var(--panel));border-left-color:var(--low)}
+/* ---------- ТЕПЛОВАЯ КАРТА: 18 колонок × 3 строки, 6 групп по 3×3 ---------- */
+.heat{
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:14px;
+  overflow-x:auto;
+  margin-bottom:16px;
+}
+
+/* Контейнер сетки: 6 групп по горизонтали */
+.grid{
+  display:grid;
+  grid-template-columns:repeat(6, auto);
+  gap:14px;                 /* отступ между группами */
+  padding:10px;
+  border:2px dashed var(--accent);
+  border-radius:8px;
+  width:fit-content;
+  min-width:100%;
+}
+
+/* Каждая группа — 3 колонки × 3 строки */
+.group{
+  display:grid;
+  grid-template-columns:repeat(3, 1fr);
+  grid-template-rows:repeat(3, 1fr);
+  gap:3px;                  /* маленький отступ между ячейками внутри группы */
+  padding:3px;
+  background:color-mix(in srgb, var(--accent) 6%, transparent);
+  border:1px solid var(--line);
+  border-radius:6px;
+}
+
+/* Ячейка — прямоугольник, вытянутый по вертикали */
+.cell{
+  position:relative;
+  width:62px;
+  height:70px;
+  border-radius:4px;
+  background:var(--empty);
+  border-left:3px solid transparent;
+  padding:4px 5px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  overflow:hidden;
+  cursor:default;
+}
+.cell .n{position:absolute;top:2px;right:4px;font-size:9px;color:var(--muted);opacity:.7}
+.cell .q{font-size:16px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.1}
+.cell .a{font-size:9px;color:var(--muted);line-height:1.2;margin-top:2px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;word-break:break-word}
+
+.cell.high{background:color-mix(in srgb,var(--high) 22%,var(--panel));border-left-color:var(--high)}
+.cell.mid{background:color-mix(in srgb,var(--mid) 22%,var(--panel));border-left-color:var(--mid)}
+.cell.low{background:color-mix(in srgb,var(--low) 20%,var(--panel));border-left-color:var(--low)}
 .cell.empty .q{color:var(--muted);font-weight:400}
 
 .tbl{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px}

@@ -3,6 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Перераспределение нагрузки ПВЗ: загрузите Excel, разметьте уровни ячеек и выгрузите отчёты по квадратам">
+<meta name="theme-color" content="#f1f3ef" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#141a17" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📦</text></svg>">
 <title>Перераспределение нагрузки ПВЗ</title>
 <link rel="stylesheet" href="style.css">
 </head>
@@ -94,6 +98,17 @@
     </div>
   </div>
 </div>
+</div>
+
+<div id="lvlModal" class="modal" hidden>
+  <div class="modal-card">
+    <h3>Как применить уровни?</h3>
+    <div class="modal-opts">
+      <button type="button" id="mAll"><b>1 · Ко всем КС</b><span>каждый квадрат пересчитан отдельно</span></button>
+      <button type="button" id="mOne"><b>2 · Только к выделенному</b><span>остальные квадраты — как в исходном файле</span></button>
+    </div>
+    <button type="button" id="mCancel" class="ghost">Отмена</button>
+  </div>
 </div>
 
 <script src="script.js"></script>

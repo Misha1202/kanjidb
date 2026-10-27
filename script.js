@@ -381,6 +381,14 @@
       return sortDir * (x - y);
     });
 
+    document.querySelectorAll('th[data-k]').forEach(function(th){
+      var k = th.getAttribute('data-k');
+      if (!th.hasAttribute('data-base')) th.setAttribute('data-base', th.textContent);
+      th.textContent = (k === sortKey)
+        ? th.getAttribute('data-base') + (sortDir === 1 ? ' ▲' : ' ▼')
+        : th.getAttribute('data-base');
+    });
+
     $('tb').innerHTML = view.length ? view.map(function(c){
       var lvClass = 'lvl' + (c.level || 0);
       var lvText = c.level ? (c.level + '-й') : '—';
@@ -445,14 +453,10 @@
   /* ---------- Экспорт: все КС на ОДНОМ ЛИСТЕ ---------- */
   function exportAll(){
     if (!data.length) return;
-    var answer = prompt(
-      'Как применить уровни?\n\n' +
-      '1 — применить уровни ко ВСЕМ КС (каждый квадрат пересчитан отдельно)\n' +
-      '2 — применить уровни ТОЛЬКО к выделенному КС, остальные — как в исходном файле\n\n' +
-      'Введите 1 или 2 (Enter — применить ко всем):', '1');
-    if (answer === null) return;
-    var applyAll = (answer.trim() !== '2');
+    $('lvlModal').hidden = false;
+  }
 
+  function doExportAll(applyAll){
     var selected = $('sq').value;
     var oldLayout = layout;
     var newLayout = {};
@@ -477,7 +481,9 @@
         var cells = newLayout[sq] || [];
         var offices = cells.filter(function(c){ return c.address; });
         var sum = offices.reduce(function(s, c){ return s + c.qty; }, 0);
-        aoa.push([sq, offices.length, Math.round(sum * 100) / 100, levelMap[1].length, levelMap[2].length]);
+        var l1 = cells.filter(function(c){ return c.level === 1; }).length;
+        var l2 = cells.filter(function(c){ return c.level === 2; }).length;
+        aoa.push([sq, offices.length, Math.round(sum * 100) / 100, l1, l2]);
       });
 
       // Пустые строки-разделители
@@ -566,6 +572,12 @@
   $('sq').addEventListener('change', render);
   $('q').addEventListener('input', function(){ renderTable(layout[$('sq').value] || []); });
   ['cAddr','cSq','cCell','cQty'].forEach(function(id){ $(id).addEventListener('change', applyMapping); });
+
+  $('mAll').addEventListener('click', function(){ $('lvlModal').hidden = true; doExportAll(true); });
+  $('mOne').addEventListener('click', function(){ $('lvlModal').hidden = true; doExportAll(false); });
+  $('mCancel').addEventListener('click', function(){ $('lvlModal').hidden = true; });
+  $('lvlModal').addEventListener('click', function(e){ if (e.target === this) this.hidden = true; });
+  document.addEventListener('keydown', function(e){ if (e.key === 'Escape' && !$('lvlModal').hidden) $('lvlModal').hidden = true; });
 
   document.querySelectorAll('#paintModes .seg').forEach(function(b){
     b.addEventListener('click', function(){
